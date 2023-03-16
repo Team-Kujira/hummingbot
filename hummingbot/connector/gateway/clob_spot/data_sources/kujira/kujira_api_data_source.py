@@ -19,7 +19,7 @@ from hummingbot.core.network_iterator import NetworkStatus
 
 class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
     def get_supported_order_types(self) -> List[OrderType]:
-        pass
+        return [OrderType.LIMIT, OrderType.MARKET]
 
     async def start(self):
         pass
