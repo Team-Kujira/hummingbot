@@ -60,6 +60,7 @@ connector_status = {
     'dexalot': 'bronze',
     'kucoin_perpetual': 'silver',
     'kucoin_perpetual_testnet': 'silver',
+    'kujira': 'bronze',
 }
 
 warning_messages = {

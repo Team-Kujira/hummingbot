@@ -1241,3 +1241,16 @@ class GatewayHttpClient:
             "address": address,
         }
         return await self.api_request("post", "injective/balances", request_payload)
+
+    async def clob_kujira_balances(
+        self,
+        chain: str,
+        network: str,
+        address: str
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            "address": address,
+        }
+        return await self.api_request("post", "kujira/balances", request_payload)
