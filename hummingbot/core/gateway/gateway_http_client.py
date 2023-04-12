@@ -1254,3 +1254,451 @@ class GatewayHttpClient:
             "address": address,
         }
         return await self.api_request("post", "kujira/balances", request_payload)
+
+    async def kujira_get_status(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira", request_payload)
+
+    async def kujira_get_token(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/token", request_payload)
+
+    async def kujira_get_tokens(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/tokens", request_payload)
+
+    async def kujira_get_tokens_all(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/tokens/all", request_payload)
+
+    async def kujira_get_market(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/market", request_payload)
+
+    async def kujira_get_markets(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/markets", request_payload)
+
+    async def kujira_get_markets_all(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/markets/all", request_payload)
+
+    async def kujira_get_order_book(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/orderBook", request_payload)
+
+    async def kujira_get_order_books(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/orderBooks", request_payload)
+
+    async def kujira_get_order_books_all(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/orderBooks/all", request_payload)
+
+    async def kujira_get_ticker(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/ticker", request_payload)
+
+    async def kujira_get_tickers(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/tickers", request_payload)
+
+    async def kujira_get_tickers_all(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/tickers/all", request_payload)
+
+    async def kujira_get_balance(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/balance", request_payload)
+
+    async def kujira_get_balances(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/balances", request_payload)
+
+    async def kujira_get_balances_all(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/balances/all", request_payload)
+
+    async def kujira_get_order(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/order", request_payload)
+
+    async def kujira_get_orders(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/orders", request_payload)
+
+    async def kujira_post_order(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("post", "kujira/order", request_payload)
+
+    async def kujira_post_orders(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("post", "kujira/orders", request_payload)
+
+    async def kujira_delete_order(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("delete", "kujira/order", request_payload)
+
+    async def kujira_delete_orders(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("delete", "kujira/orders", request_payload)
+
+    async def kujira_delete_orders_all(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("delete", "kujira/orders/all", request_payload)
+
+    async def kujira_post_market_withdraw(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("post", "kujira/market/withdraw", request_payload)
+
+    async def kujira_post_market_withdraws(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("post", "kujira/market/withdraws", request_payload)
+
+    async def kujira_post_market_withdraws_all(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("post", "kujira/market/withdraws/all", request_payload)
+
+    async def kujira_get_transaction(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/transaction", request_payload)
+
+    async def kujira_get_transactions(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/transactions", request_payload)
+
+    async def kujira_get_wallet_public_key(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/wallet/publicKey", request_payload)
+
+    async def kujira_get_wallet_public_keys(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/wallet/publicKeys", request_payload)
+
+    async def kujira_get_block_current(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/block/current", request_payload)
+
+    async def kujira_get_fees_estimated(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "kujira/fees/estimated", request_payload)
