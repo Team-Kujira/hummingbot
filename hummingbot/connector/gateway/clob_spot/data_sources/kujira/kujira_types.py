@@ -30,6 +30,12 @@ class OrderStatus(Enum):
     CANCELLATION_PENDING = "CANCELLATION_PENDING",
     UNKNOWN = "UNKNOWN"
 
+
+class OrderType(Enum):
+    MARKET = "MARKET",
+    LIMIT = "LIMIT"
+
+
 ##########################
 # Injective related types:
 ##########################

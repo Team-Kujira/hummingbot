@@ -92,7 +92,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                         },
                     ],
                     "tick_interval": 59,
-                    "kujira_order_type": "LIMIT",
+                    "kujira_order_type": OrderType.LIMIT,
                     "price_strategy": "middle",
                     "middle_price_strategy": "VWAP",
                     "cancel_all_orders_on_start": True,
@@ -163,7 +163,7 @@ class KujiraPMMExample(ScriptStrategyBase):
             if self._configuration["strategy"]["cancel_all_orders_on_start"]:
                 await self._cancel_all_orders()
 
-            await self._settle_funds()
+            await self._market_withdraw()
 
             waiting_time = self._calculate_waiting_time(self._configuration["strategy"]["tick_interval"])
             self._log(DEBUG, f"""Waiting for {waiting_time}s.""")
@@ -190,7 +190,7 @@ class KujiraPMMExample(ScriptStrategyBase):
             self._is_busy = True
 
             try:
-                await self._settle_funds()
+                await self._market_withdraw()
             except Exception as exception:
                 self._handle_error(exception)
 
@@ -239,7 +239,7 @@ class KujiraPMMExample(ScriptStrategyBase):
 
             if self._configuration["strategy"]["cancel_all_orders_on_stop"]:
                 await self._cancel_all_orders()
-                await self._settle_funds()
+                await self._market_withdraw()
 
             super().stop(clock)
         finally:
@@ -480,8 +480,9 @@ class KujiraPMMExample(ScriptStrategyBase):
                 else:
                     response = await self._gateway.kujira_get_balances(**request)
 
+                    # TODO fix!!!
                     self._balances = {"balances": {}}
-                    for (token, balance) in dict(response["balances"]).items():
+                    for (token, balance) in dict(response["tokens"]).items():
                         decimal_balance = Decimal(balance)
                         if decimal_balance > self._decimal_zero:
                             self._balances["balances"][token] = Decimal(balance)
@@ -641,7 +642,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "connector": self._configuration["connector"],
                     "marketId": self._market["id"],
                     "ownerAddress": self._owner_address,
-                    "status": "FILLED"  # TODO Use enum!!!
+                    "status": OrderStatus.FILLED
                 }
 
                 if use_cache and self._filled_orders is not None:
@@ -670,13 +671,13 @@ class KujiraPMMExample(ScriptStrategyBase):
                 orders = []
                 for candidate in proposal:
                     orders.append({
-                        "id": candidate.id,
+                        "clientId": candidate.id,
                         "marketId": self._market["id"],
                         "ownerAddress": self._owner_address,
                         "side": convert_order_side(candidate.order_side).value[0],
                         "price": float(candidate.price),
                         "amount": float(candidate.amount),
-                        "type": KujiraOrderType[self._configuration["strategy"].get("kujira_order_type", "LIMIT")].value[
+                        "type": KujiraOrderType[self._configuration["strategy"].get("kujira_order_type", OrderType.LIMIT)].value[
                             0],
                         "replaceIfExists": True
                     })
@@ -720,12 +721,9 @@ class KujiraPMMExample(ScriptStrategyBase):
                         "chain": self._configuration["chain"],
                         "network": self._configuration["network"],
                         "connector": self._configuration["connector"],
-                        "orders": [{
-                            "ids": [],
-                            "exchangeIds": duplicated_orders_exchange_ids,
-                            "marketId": self._market["id"],
-                            "ownerAddress": self._owner_address,
-                        }]
+                        "ids": duplicated_orders_exchange_ids,
+                        "marketId": self._market["id"],
+                        "ownerAddress": self._owner_address,
                     }
 
                     response = await self._gateway.kujira_delete_orders(**request)
@@ -758,12 +756,9 @@ class KujiraPMMExample(ScriptStrategyBase):
                         "chain": self._configuration["chain"],
                         "network": self._configuration["network"],
                         "connector": self._configuration["connector"],
-                        "orders": [{
-                            "ids": remaining_orders_ids,
-                            "exchangeIds": [],
-                            "marketId": self._market["id"],
-                            "ownerAddress": self._owner_address,
-                        }]
+                        "clientIds": remaining_orders_ids,  # TODO fix, this will not work!!!
+                        "marketId": self._market["id"],
+                        "ownerAddress": self._owner_address,
                     }
 
                     response = await self._gateway.kujira_delete_orders(**request)
@@ -793,10 +788,8 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "chain": self._configuration["chain"],
                     "network": self._configuration["network"],
                     "connector": self._configuration["connector"],
-                    "order": {
-                        "marketId": self._market["id"],
-                        "ownerAddress": self._owner_address,
-                    }
+                    "marketId": self._market["id"],
+                    "ownerAddress": self._owner_address,
                 }
 
                 response = await self._gateway.kujira_delete_orders(**request)
@@ -810,9 +803,9 @@ class KujiraPMMExample(ScriptStrategyBase):
         finally:
             self._log(DEBUG, """_cancel_all_orders... end""")
 
-    async def _settle_funds(self):
+    async def _market_withdraw(self):
         try:
-            self._log(DEBUG, """_settle_funds... start""")
+            self._log(DEBUG, """_market_withdraw... start""")
 
             response = None
             try:
@@ -820,8 +813,8 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "chain": self._configuration["chain"],
                     "network": self._configuration["network"],
                     "connector": self._configuration["connector"],
-                    "ownerAddress": self._owner_address,
                     "marketId": self._market["id"],
+                    "ownerAddress": self._owner_address,
                 }
 
                 self._log(INFO, f"""gateway.kujira_post_market_withdraw:\nrequest:\n{self._dump(request)}""")
@@ -835,7 +828,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 self._log(INFO,
                           f"""gateway.kujira_post_market_withdraw:\nresponse:\n{self._dump(response)}""")
         finally:
-            self._log(DEBUG, """_settle_funds... end""")
+            self._log(DEBUG, """_market_withdraw... end""")
 
     async def _get_remaining_orders_client_ids(self, candidate_orders, created_orders) -> List[str]:
         self._log(DEBUG, """_get_remaining_orders_ids... end""")
