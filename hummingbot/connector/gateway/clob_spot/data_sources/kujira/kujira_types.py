@@ -1,3 +1,5 @@
+from enum import Enum
+
 from pyinjective.async_client import AsyncClient
 from pyinjective.composer import Composer as ProtoMsgComposer
 from pyinjective.constant import Network
@@ -17,6 +19,21 @@ from pyinjective.proto.exchange.injective_spot_exchange_rpc_pb2 import (
 )
 from pyinjective.proto.injective.exchange.v1beta1.exchange_pb2 import DerivativeOrder, SpotOrder
 from pyinjective.wallet import Address
+
+
+class OrderStatus(Enum):
+    OPEN = "OPEN",
+    CANCELLED = "CANCELLED",
+    PARTIALLY_FILLED = "PARTIALLY_FILLED",
+    FILLED = "FILLED",
+    CREATION_PENDING = "CREATION_PENDING",
+    CANCELLATION_PENDING = "CANCELLATION_PENDING",
+    UNKNOWN = "UNKNOWN"
+
+##########################
+# Injective related types:
+##########################
+
 
 AsyncClient = AsyncClient
 ProtoMsgComposer = ProtoMsgComposer
@@ -41,7 +58,10 @@ DerivativeOrder = DerivativeOrder
 SpotOrder = SpotOrder
 Address = Address
 
+
 __all__ = [
+    "OrderStatus",
+
     "AsyncClient",
     "ProtoMsgComposer",
     "Network",

@@ -5,6 +5,15 @@ from hummingbot.core.api_throttler.data_types import RateLimit
 from hummingbot.core.data_type.common import OrderType, TradeType
 from hummingbot.core.data_type.in_flight_order import OrderState
 
+KUJIRA_NATIVE_TOKEN = {
+    "id": "ukuji",
+    "name": "Kuji",
+}
+
+##########################
+# Injective related constants:
+##########################
+
 NONCE_PATH = "kujira/exchange/v1beta1/exchange"
 
 CONNECTOR_NAME = "kujira"

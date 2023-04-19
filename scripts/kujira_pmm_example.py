@@ -15,6 +15,8 @@ import numpy as np
 from hummingbot.client.hummingbot_application import HummingbotApplication
 from hummingbot.connector.gateway.clob.clob_types import OrderSide as KujiraOrderSide, OrderType as KujiraOrderType
 from hummingbot.connector.gateway.clob.clob_utils import convert_order_side, convert_trading_pair
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_constants import KUJIRA_NATIVE_TOKEN
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_types import OrderStatus
 from hummingbot.connector.gateway.clob_spot.gateway_clob_spot import GatewayCLOBSPOT
 from hummingbot.core.clock import Clock
 from hummingbot.core.data_type.common import OrderType, TradeType
@@ -44,10 +46,10 @@ class KujiraPMMExample(ScriptStrategyBase):
                 "network": "testnet",
                 "connector": "kujira",
                 "markets": {
-                    "kujira_kujira_testnet": [  # Only one market can be used
-                        "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh",  # KUJI/DEMO
-                        # "kujira1wl003xxwqltxpg5pkre0rl605e406ktmq5gnv0ngyjamq69mc2kqm06ey6",  # KUJI/USK
-                        # "kujira14sa4u42n2a8kmlvj3qcergjhy6g9ps06rzeth94f2y6grlat6u6ssqzgtg",  # DEMO/USK
+                    "kujira_kujira_testnet": [  # Only one market can be used for now
+                        "KUJI-DEMO",  # "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh"
+                        # "KUJI-USK",   # "kujira1wl003xxwqltxpg5pkre0rl605e406ktmq5gnv0ngyjamq69mc2kqm06ey6"
+                        # "DEMO-USK",   # "kujira14sa4u42n2a8kmlvj3qcergjhy6g9ps06rzeth94f2y6grlat6u6ssqzgtg"
                     ]
                 },
                 "strategy": {
@@ -103,15 +105,15 @@ class KujiraPMMExample(ScriptStrategyBase):
             }
             self._owner_address = None
             self._connector_id = None
-            self._quote_token = None
-            self._base_token = None
+            self._quote_token_name = None
+            self._base_token_name = None
             self._hb_trading_pair = None
             self._is_busy: bool = False
             self._refresh_timestamp: int
-            self._market: str
+            self._market["id"]: str
             self._gateway: GatewayHttpClient
             self._connector: GatewayCLOBSPOT
-            self._market_info: Dict[str, Any]
+            self._market: Dict[str, Any]
             self._balances: Dict[str, Any] = {}
             self._tickers: Dict[str, Any]
             self._open_orders: Dict[str, Any]
@@ -142,7 +144,7 @@ class KujiraPMMExample(ScriptStrategyBase):
             self._connector_id = next(iter(self._configuration["markets"]))
 
             self._hb_trading_pair = self._configuration["markets"][self._connector_id][0]
-            self._market = convert_trading_pair(self._hb_trading_pair)
+            self._market_name = convert_trading_pair(self._hb_trading_pair)
 
             # noinspection PyTypeChecker
             self._connector: GatewayCLOBSPOT = self.connectors[self._connector_id]
@@ -150,10 +152,13 @@ class KujiraPMMExample(ScriptStrategyBase):
 
             self._owner_address = self._connector.address
 
-            self._market_info = await self._get_market()
+            self._market = await self._get_market()
 
-            self._base_token = self._market_info["baseToken"]
-            self._quote_token = self._market_info["quoteToken"]
+            self._base_token = self._market["baseToken"]
+            self._quote_token = self._market["quoteToken"]
+
+            self._base_token_name = self._market["baseToken"]["name"]
+            self._quote_token_name = self._market["quoteToken"]["name"]
 
             if self._configuration["strategy"]["cancel_all_orders_on_start"]:
                 await self._cancel_all_orders()
@@ -277,8 +282,8 @@ class KujiraPMMExample(ScriptStrategyBase):
             if used_price is None or used_price <= self._decimal_zero:
                 raise ValueError(f"Invalid price: {used_price}")
 
-            tick_size = Decimal(self._market_info["tickSize"])
-            min_order_size = Decimal(self._market_info["minimumOrderSize"])
+            tick_size = Decimal(self._market["tickSize"])
+            min_order_size = Decimal(self._market["minimumOrderSize"])
 
             order_id = 1
             proposal = []
@@ -368,8 +373,8 @@ class KujiraPMMExample(ScriptStrategyBase):
             adjusted_proposal: List[OrderCandidate] = []
 
             balances = await self._get_balances()
-            base_balance = Decimal(balances["balances"][self._base_token])
-            quote_balance = Decimal(balances["balances"][self._quote_token])
+            base_balance = Decimal(balances["balances"][self._base_token_name])
+            quote_balance = Decimal(balances["balances"][self._quote_token_name])
             current_base_balance = base_balance
             current_quote_balance = quote_balance
 
@@ -438,7 +443,7 @@ class KujiraPMMExample(ScriptStrategyBase):
         try:
             self._log(DEBUG, """_get_base_balance... start""")
 
-            base_balance = Decimal((await self._get_balances())["balances"][self._base_token])
+            base_balance = Decimal((await self._get_balances())["balances"][self._base_token_name])
 
             return base_balance
         finally:
@@ -448,7 +453,7 @@ class KujiraPMMExample(ScriptStrategyBase):
         try:
             self._log(DEBUG, """_get_quote_balance... start""")
 
-            quote_balance = Decimal((await self._get_balances())["balances"][self._quote_token])
+            quote_balance = Decimal((await self._get_balances())["balances"][self._quote_token_name])
 
             return quote_balance
         finally:
@@ -461,9 +466,11 @@ class KujiraPMMExample(ScriptStrategyBase):
             response = None
             try:
                 request = {
+                    "chain": self._configuration["chain"],
                     "network": self._configuration["network"],
-                    "address": self._owner_address,
-                    "token_symbols": []
+                    "connector": self._configuration["connector"],
+                    "ownerAddress": self._owner_address,
+                    "tokenIds": [KUJIRA_NATIVE_TOKEN["id"], self._base_token["id"], self._quote_token["id"]]
                 }
 
                 self._log(INFO, f"""gateway.kujira_get_balances:\nrequest:\n{self._dump(request)}""")
@@ -500,7 +507,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "chain": self._configuration["chain"],
                     "network": self._configuration["network"],
                     "connector": self._configuration["connector"],
-                    "id": self._market
+                    "id": self._market["id"]
                 }
 
                 response = await self._gateway.kujira_get_market(**request)
@@ -527,7 +534,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "chain": self._configuration["chain"],
                     "network": self._configuration["network"],
                     "connector": self._configuration["connector"],
-                    "marketId": self._market
+                    "marketId": self._market["id"]
                 }
 
                 response = await self._gateway.kujira_get_order_book(**request)
@@ -554,7 +561,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "chain": self._configuration["chain"],
                     "network": self._configuration["network"],
                     "connector": self._configuration["connector"],
-                    "marketId": self._market
+                    "marketId": self._market["id"]
                 }
 
                 if use_cache and self._tickers is not None:
@@ -587,9 +594,9 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "chain": self._configuration["chain"],
                     "network": self._configuration["network"],
                     "connector": self._configuration["connector"],
-                    "marketId": self._market,
+                    "marketId": self._market["id"],
                     "ownerAddress": self._owner_address,
-                    "status": "OPEN"  # TODO Use enum!!!
+                    "status": OrderStatus.OPEN
                 }
 
                 if use_cache and self._open_orders is not None:
@@ -615,7 +622,7 @@ class KujiraPMMExample(ScriptStrategyBase):
 
             filled_orders = await self._get_filled_orders()
 
-            last_filled_order = list(dict(filled_orders[self._market]).values())[0]
+            last_filled_order = list(dict(filled_orders[self._market["id"]]).values())[0]
 
             return last_filled_order
         finally:
@@ -632,7 +639,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "chain": self._configuration["chain"],
                     "network": self._configuration["network"],
                     "connector": self._configuration["connector"],
-                    "marketId": self._market,
+                    "marketId": self._market["id"],
                     "ownerAddress": self._owner_address,
                     "status": "FILLED"  # TODO Use enum!!!
                 }
@@ -664,7 +671,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 for candidate in proposal:
                     orders.append({
                         "id": candidate.id,
-                        "marketId": self._market,
+                        "marketId": self._market["id"],
                         "ownerAddress": self._owner_address,
                         "side": convert_order_side(candidate.order_side).value[0],
                         "price": float(candidate.price),
@@ -716,7 +723,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                         "orders": [{
                             "ids": [],
                             "exchangeIds": duplicated_orders_exchange_ids,
-                            "marketId": self._market,
+                            "marketId": self._market["id"],
                             "ownerAddress": self._owner_address,
                         }]
                     }
@@ -754,7 +761,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                         "orders": [{
                             "ids": remaining_orders_ids,
                             "exchangeIds": [],
-                            "marketId": self._market,
+                            "marketId": self._market["id"],
                             "ownerAddress": self._owner_address,
                         }]
                     }
@@ -787,7 +794,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "network": self._configuration["network"],
                     "connector": self._configuration["connector"],
                     "order": {
-                        "marketId": self._market,
+                        "marketId": self._market["id"],
                         "ownerAddress": self._owner_address,
                     }
                 }
@@ -814,7 +821,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "network": self._configuration["network"],
                     "connector": self._configuration["connector"],
                     "ownerAddress": self._owner_address,
-                    "marketId": self._market,
+                    "marketId": self._market["id"],
                 }
 
                 self._log(INFO, f"""gateway.kujira_post_market_withdraw:\nrequest:\n{self._dump(request)}""")
@@ -848,7 +855,7 @@ class KujiraPMMExample(ScriptStrategyBase):
         self._log(DEBUG, """_get_duplicated_orders_exchange_ids... start""")
 
         try:
-            open_orders = (await self._get_open_orders())[self._market].values()
+            open_orders = (await self._get_open_orders())[self._market["id"]].values()
 
             open_orders_map = {}
             duplicated_orders_exchange_ids = []
