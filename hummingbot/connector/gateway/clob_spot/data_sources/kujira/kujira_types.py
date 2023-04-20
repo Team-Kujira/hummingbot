@@ -36,6 +36,14 @@ class OrderType(Enum):
     LIMIT = "LIMIT"
 
 
+class TickerSource(Enum):
+    ORDER_BOOK_SAP = "orderBookSimpleAveragePrice",
+    ORDER_BOOK_WAP = "orderBookWeightedAveragePrice",
+    ORDER_BOOK_VWAP = "orderBookVolumeWeightedAveragePrice",
+    LAST_FILLED_ORDER = "lastFilledOrder",
+    NOMICS = "nomics",
+
+
 ##########################
 # Injective related types:
 ##########################
@@ -66,8 +74,6 @@ Address = Address
 
 
 __all__ = [
-    "OrderStatus",
-
     "AsyncClient",
     "ProtoMsgComposer",
     "Network",
