@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import math
 import time
 import traceback
@@ -318,7 +319,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                             price=bid_market_price
                         )
 
-                        bid_order.id = str(order_id)
+                        bid_order.client_id = str(order_id)
 
                         bid_orders.append(bid_order)
 
@@ -352,7 +353,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                             price=ask_market_price
                         )
 
-                        ask_order.id = str(order_id)
+                        ask_order.client_id = str(order_id)
 
                         ask_orders.append(ask_order)
 
@@ -373,8 +374,8 @@ class KujiraPMMExample(ScriptStrategyBase):
             adjusted_proposal: List[OrderCandidate] = []
 
             balances = await self._get_balances()
-            base_balance = Decimal(balances["balances"][self._base_token_name])
-            quote_balance = Decimal(balances["balances"][self._quote_token_name])
+            base_balance = Decimal(balances[self._base_token_name]["free"])
+            quote_balance = Decimal(balances[self._quote_token_name]["free"])
             current_base_balance = base_balance
             current_quote_balance = quote_balance
 
@@ -443,7 +444,7 @@ class KujiraPMMExample(ScriptStrategyBase):
         try:
             self._log(DEBUG, """_get_base_balance... start""")
 
-            base_balance = Decimal((await self._get_balances())["balances"][self._base_token_name])
+            base_balance = Decimal((await self._get_balances())[self._base_token["id"]]["free"])
 
             return base_balance
         finally:
@@ -453,7 +454,7 @@ class KujiraPMMExample(ScriptStrategyBase):
         try:
             self._log(DEBUG, """_get_quote_balance... start""")
 
-            quote_balance = Decimal((await self._get_balances())["balances"][self._quote_token_name])
+            quote_balance = Decimal((await self._get_balances())[self._quote_token["id"]]["free"])
 
             return quote_balance
         finally:
@@ -480,12 +481,16 @@ class KujiraPMMExample(ScriptStrategyBase):
                 else:
                     response = await self._gateway.kujira_get_balances(**request)
 
-                    # TODO fix!!!
-                    self._balances = {"balances": {}}
+                    self._balances = copy.deepcopy(response)
+
+                    self._balances["total"]["free"] = Decimal(self._balances["total"]["free"])
+                    self._balances["total"]["lockedInOrders"] = Decimal(self._balances["total"]["lockedInOrders"])
+                    self._balances["total"]["unsettled"] = Decimal(self._balances["total"]["unsettled"])
+
                     for (token, balance) in dict(response["tokens"]).items():
-                        decimal_balance = Decimal(balance)
-                        if decimal_balance > self._decimal_zero:
-                            self._balances["balances"][token] = Decimal(balance)
+                        balance["free"] = Decimal(balance["free"])
+                        balance["lockedInOrders"] = Decimal(balance["lockedInOrders"])
+                        balance["unsettled"] = Decimal(balance["unsettled"])
 
                 return response
             except Exception as exception:
@@ -756,7 +761,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                         "chain": self._configuration["chain"],
                         "network": self._configuration["network"],
                         "connector": self._configuration["connector"],
-                        "clientIds": remaining_orders_ids,  # TODO fix, this will not work!!!
+                        "clientIds": remaining_orders_ids,
                         "marketId": self._market["id"],
                         "ownerAddress": self._owner_address,
                     }
@@ -834,8 +839,8 @@ class KujiraPMMExample(ScriptStrategyBase):
         self._log(DEBUG, """_get_remaining_orders_ids... end""")
 
         try:
-            candidate_orders_ids = [order.id for order in candidate_orders] if len(candidate_orders) else []
-            created_orders_ids = [order["id"] for order in created_orders.values()] if len(created_orders) else []
+            candidate_orders_ids = [order.client_id for order in candidate_orders] if len(candidate_orders) else []
+            created_orders_ids = [order["clientId"] for order in created_orders.values()] if len(created_orders) else []
             remaining_orders_ids = list(set(candidate_orders_ids) - set(created_orders_ids))
 
             self._log(INFO, f"""remaining_orders_ids:\n{self._dump(remaining_orders_ids)}""")
@@ -854,12 +859,12 @@ class KujiraPMMExample(ScriptStrategyBase):
             duplicated_orders_exchange_ids = []
 
             for open_order in open_orders:
-                if open_order["id"] == "0":  # Avoid touching manually created orders.
+                if open_order["clientId"] == "0":  # Avoid touching manually created orders.
                     continue
-                elif open_order["id"] not in open_orders_map:
-                    open_orders_map[open_order["id"]] = [open_order]
+                elif open_order["clientId"] not in open_orders_map:
+                    open_orders_map[open_order["clientId"]] = [open_order]
                 else:
-                    open_orders_map[open_order["id"]].append(open_order)
+                    open_orders_map[open_order["clientId"]].append(open_order)
 
             for orders in open_orders_map.values():
                 orders.sort(key=lambda order: order["exchangeId"])
