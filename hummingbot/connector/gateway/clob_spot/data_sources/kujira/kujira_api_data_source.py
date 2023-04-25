@@ -39,7 +39,6 @@ from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
 from hummingbot.logger import HummingbotLogger
 
 from .kujira_types import (
-    Address,
     AsyncClient,
     GetTxByTxHashResponse,
     MarketsResponse,
@@ -83,7 +82,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._chain = connector_spec["chain"]
         self._network = connector_spec["network"]
         self._sub_account_id = connector_spec["wallet_address"]
-        self._account_address: str = Address(bytes.fromhex(self._sub_account_id[2:-24])).to_acc_bech32()
+        self._account_address: str = self._sub_account_id
         if self._network == "mainnet":
             self._network_obj = Network.mainnet()
         elif self._network == "testnet":

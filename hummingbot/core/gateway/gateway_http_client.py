@@ -1501,17 +1501,9 @@ class GatewayHttpClient:
 
     async def kujira_get_market(
         self,
-        chain: str,
-        network: str,
         payload: Dict[str, Any]
     ):
-        request_payload = {
-            "chain": chain,
-            "network": network,
-            **payload
-        }
-
-        return await self.api_request("get", "kujira/market", request_payload)
+        return await self.api_request("get", "kujira/market", payload)
 
     async def kujira_get_markets(
         self,

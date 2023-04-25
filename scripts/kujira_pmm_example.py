@@ -111,7 +111,6 @@ class KujiraPMMExample(ScriptStrategyBase):
             self._hb_trading_pair = None
             self._is_busy: bool = False
             self._refresh_timestamp: int
-            self._market["id"]: str
             self._gateway: GatewayHttpClient
             self._connector: GatewayCLOBSPOT
             self._market: Dict[str, Any]
@@ -513,10 +512,10 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "chain": self._configuration["chain"],
                     "network": self._configuration["network"],
                     "connector": self._configuration["connector"],
-                    "id": self._market["id"]
+                    "name": self._market_name
                 }
 
-                response = await self._gateway.kujira_get_market(**request)
+                response = await self._gateway.kujira_get_market(request)
 
                 return response
             except Exception as exception:
