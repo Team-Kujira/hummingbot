@@ -1445,17 +1445,9 @@ class GatewayHttpClient:
 
     async def kujira_get_status(
         self,
-        chain: str,
-        network: str,
         payload: Dict[str, Any]
     ):
-        request_payload = {
-            "chain": chain,
-            "network": network,
-            **payload
-        }
-
-        return await self.api_request("get", "kujira", request_payload)
+        return await self.api_request("get", "kujira", payload, use_body=True)
 
     async def kujira_get_token(
         self,
@@ -1469,119 +1461,103 @@ class GatewayHttpClient:
             **payload
         }
 
-        return await self.api_request("get", "kujira/token", request_payload)
+        return await self.api_request("get", "kujira/token", request_payload, use_body=True)
 
     async def kujira_get_tokens(
         self,
-        chain: str,
-        network: str,
         payload: Dict[str, Any]
     ):
-        request_payload = {
-            "chain": chain,
-            "network": network,
-            **payload
-        }
-
-        return await self.api_request("get", "kujira/tokens", request_payload)
+        return await self.api_request("get", "kujira/tokens", payload, use_body=True)
 
     async def kujira_get_tokens_all(
         self,
-        chain: str,
-        network: str,
         payload: Dict[str, Any]
     ):
-        request_payload = {
-            "chain": chain,
-            "network": network,
-            **payload
-        }
-
-        return await self.api_request("get", "kujira/tokens/all", request_payload)
+        return await self.api_request("get", "kujira/tokens/all", payload, use_body=True)
 
     async def kujira_get_market(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/market", payload)
+        return await self.api_request("get", "kujira/market", payload, use_body=True)
 
     async def kujira_get_markets(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/markets", payload)
+        return await self.api_request("get", "kujira/markets", payload, use_body=True)
 
     async def kujira_get_markets_all(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/markets/all", payload)
+        return await self.api_request("get", "kujira/markets/all", payload, use_body=True)
 
     async def kujira_get_order_book(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/orderBook", payload)
+        return await self.api_request("get", "kujira/orderBook", payload, use_body=True)
 
     async def kujira_get_order_books(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/orderBooks", payload)
+        return await self.api_request("get", "kujira/orderBooks", payload, use_body=True)
 
     async def kujira_get_order_books_all(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/orderBooks/all", payload)
+        return await self.api_request("get", "kujira/orderBooks/all", payload, use_body=True)
 
     async def kujira_get_ticker(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/ticker", payload)
+        return await self.api_request("get", "kujira/ticker", payload, use_body=True)
 
     async def kujira_get_tickers(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/tickers", payload)
+        return await self.api_request("get", "kujira/tickers", payload, use_body=True)
 
     async def kujira_get_tickers_all(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/tickers/all", payload)
+        return await self.api_request("get", "kujira/tickers/all", payload, use_body=True)
 
     async def kujira_get_balance(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/balance", payload)
+        return await self.api_request("get", "kujira/balance", payload, use_body=True)
 
     async def kujira_get_balances(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/balances", payload)
+        return await self.api_request("get", "kujira/balances", payload, use_body=True)
 
     async def kujira_get_balances_all(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/balances/all", payload)
+        return await self.api_request("get", "kujira/balances/all", payload, use_body=True)
 
     async def kujira_get_order(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/order", payload)
+        return await self.api_request("get", "kujira/order", payload, use_body=True)
 
     async def kujira_get_orders(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/orders", payload)
+        return await self.api_request("get", "kujira/orders", payload, use_body=True)
 
     async def kujira_post_order(
         self,
@@ -1635,34 +1611,34 @@ class GatewayHttpClient:
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/transaction", payload)
+        return await self.api_request("get", "kujira/transaction", payload, use_body=True)
 
     async def kujira_get_transactions(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/transactions", payload)
+        return await self.api_request("get", "kujira/transactions", payload, use_body=True)
 
     async def kujira_get_wallet_public_key(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/wallet/publicKey", payload)
+        return await self.api_request("get", "kujira/wallet/publicKey", payload, use_body=True)
 
     async def kujira_get_wallet_public_keys(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/wallet/publicKeys", payload)
+        return await self.api_request("get", "kujira/wallet/publicKeys", payload, use_body=True)
 
     async def kujira_get_block_current(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/block/current", payload)
+        return await self.api_request("get", "kujira/block/current", payload, use_body=True)
 
     async def kujira_get_fees_estimated(
         self,
         payload: Dict[str, Any]
     ):
-        return await self.api_request("get", "kujira/fees/estimated", payload)
+        return await self.api_request("get", "kujira/fees/estimated", payload, use_body=True)
