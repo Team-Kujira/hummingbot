@@ -478,7 +478,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 if use_cache and self._balances is not None:
                     response = self._balances
                 else:
-                    response = await self._gateway.kujira_get_balances(**request)
+                    response = await self._gateway.kujira_get_balances(request)
 
                     self._balances = copy.deepcopy(response)
 
@@ -542,7 +542,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "marketId": self._market["id"]
                 }
 
-                response = await self._gateway.kujira_get_order_book(**request)
+                response = await self._gateway.kujira_get_order_book(request)
 
                 return response
             except Exception as exception:
@@ -572,7 +572,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 if use_cache and self._tickers is not None:
                     response = self._tickers
                 else:
-                    response = await self._gateway.kujira_get_ticker(**request)
+                    response = await self._gateway.kujira_get_ticker(request)
 
                     self._tickers = response
 
@@ -607,7 +607,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 if use_cache and self._open_orders is not None:
                     response = self._open_orders
                 else:
-                    response = await self._gateway.kujira_get_orders(**request)
+                    response = await self._gateway.kujira_get_orders(request)
                     self._open_orders = response
 
                 return response
@@ -652,7 +652,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 if use_cache and self._filled_orders is not None:
                     response = self._filled_orders
                 else:
-                    response = await self._gateway.kujira_get_orders(**request)
+                    response = await self._gateway.kujira_get_orders(request)
                     self._filled_orders = response
 
                 return response
@@ -696,7 +696,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 self._log(INFO, f"""gateway.kujira_post_orders:\nrequest:\n{self._dump(request)}""")
 
                 if len(orders):
-                    response = await self._gateway.kujira_post_orders(**request)
+                    response = await self._gateway.kujira_post_orders(request)
                 else:
                     self._log(WARNING, "No order was defined for placement/replacement. Skipping.", True)
                     response = []
@@ -730,7 +730,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                         "ownerAddress": self._owner_address,
                     }
 
-                    response = await self._gateway.kujira_delete_orders(**request)
+                    response = await self._gateway.kujira_delete_orders(request)
                 else:
                     self._log(INFO, "No order needed to be canceled.")
                     response = {}
@@ -765,7 +765,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                         "ownerAddress": self._owner_address,
                     }
 
-                    response = await self._gateway.kujira_delete_orders(**request)
+                    response = await self._gateway.kujira_delete_orders(request)
                 else:
                     self._log(INFO, "No order needed to be canceled.")
                     response = {}
@@ -796,7 +796,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "ownerAddress": self._owner_address,
                 }
 
-                response = await self._gateway.kujira_delete_orders(**request)
+                response = await self._gateway.kujira_delete_orders(request)
             except Exception as exception:
                 response = traceback.format_exc()
 
@@ -823,7 +823,7 @@ class KujiraPMMExample(ScriptStrategyBase):
 
                 self._log(INFO, f"""gateway.kujira_post_market_withdraw:\nrequest:\n{self._dump(request)}""")
 
-                response = await self._gateway.kujira_post_market_withdraw(**request)
+                response = await self._gateway.kujira_post_market_withdraw(request)
             except Exception as exception:
                 response = traceback.format_exc()
 
