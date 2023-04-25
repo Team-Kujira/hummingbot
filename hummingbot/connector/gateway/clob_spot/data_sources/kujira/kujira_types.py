@@ -2,7 +2,7 @@ from enum import Enum
 
 from pyinjective.async_client import AsyncClient
 from pyinjective.composer import Composer as ProtoMsgComposer
-from pyinjective.constant import Network
+from pyinjective.constant import Denom, Network
 from pyinjective.orderhash import OrderHashResponse, build_eip712_msg, hash_order
 from pyinjective.proto.exchange.injective_accounts_rpc_pb2 import StreamSubaccountBalanceResponse, SubaccountBalance
 from pyinjective.proto.exchange.injective_explorer_rpc_pb2 import GetTxByTxHashResponse, StreamTxsResponse
@@ -17,7 +17,9 @@ from pyinjective.proto.exchange.injective_spot_exchange_rpc_pb2 import (
     StreamTradesResponse,
     TokenMeta,
 )
+from pyinjective.proto.injective.exchange.v1beta1 import exchange_pb2
 from pyinjective.proto.injective.exchange.v1beta1.exchange_pb2 import DerivativeOrder, SpotOrder
+from pyinjective.utils import derivative_price_to_backend, derivative_quantity_to_backend
 from pyinjective.wallet import Address
 
 
@@ -68,9 +70,13 @@ StreamOrderbookResponse = StreamOrderbookResponse
 StreamOrdersResponse = StreamOrdersResponse
 StreamTradesResponse = StreamTradesResponse
 TokenMeta = TokenMeta
+exchange_pb2 = exchange_pb2
 DerivativeOrder = DerivativeOrder
 SpotOrder = SpotOrder
 Address = Address
+Denom = Denom
+derivative_price_to_backend = derivative_price_to_backend
+derivative_quantity_to_backend = derivative_quantity_to_backend
 
 
 __all__ = [
@@ -93,7 +99,11 @@ __all__ = [
     "StreamOrdersResponse",
     "StreamTradesResponse",
     "TokenMeta",
+    "exchange_pb2",
     "DerivativeOrder",
     "SpotOrder",
     "Address",
+    "Denom",
+    "derivative_price_to_backend",
+    "derivative_quantity_to_backend",
 ]
