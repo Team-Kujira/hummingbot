@@ -46,6 +46,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 "chain": "kujira",
                 "network": "testnet",
                 "connector": "kujira",
+                "owner_address": "kujira1d6ld7s0edsh5qsmt3lq4tnrqgvxc3jdrk9z3km",  # TODO remove this dependency!!!
                 "markets": {
                     "kujira_kujira_testnet": [  # Only one market can be used for now
                         "KUJI-DEMO",  # "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh"
@@ -138,8 +139,8 @@ class KujiraPMMExample(ScriptStrategyBase):
 
             self.logger().setLevel(self._configuration["logger"].get("level", "INFO"))
 
-            await super().initialize(start_command)
-            self.initialized = False
+            # await super().initialize(start_command)
+            # self.initialized = False
 
             self._connector_id = next(iter(self._configuration["markets"]))
 
@@ -147,10 +148,11 @@ class KujiraPMMExample(ScriptStrategyBase):
             self._market_name = convert_trading_pair(self._hb_trading_pair)
 
             # noinspection PyTypeChecker
-            self._connector: GatewayCLOBSPOT = self.connectors[self._connector_id]
+            # self._connector: GatewayCLOBSPOT = self.connectors[self._connector_id]
             self._gateway: GatewayHttpClient = GatewayHttpClient.get_instance()
 
-            self._owner_address = self._connector.address
+            # self._owner_address = self._connector.address
+            self._owner_address = self._configuration["owner_address"]
 
             self._market = await self._get_market()
 
@@ -601,7 +603,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "connector": self._configuration["connector"],
                     "marketId": self._market["id"],
                     "ownerAddress": self._owner_address,
-                    "status": OrderStatus.OPEN
+                    "status": OrderStatus.OPEN.value[0]
                 }
 
                 if use_cache and self._open_orders is not None:
@@ -646,7 +648,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "connector": self._configuration["connector"],
                     "marketId": self._market["id"],
                     "ownerAddress": self._owner_address,
-                    "status": OrderStatus.FILLED
+                    "status": OrderStatus.FILLED.value[0]
                 }
 
                 if use_cache and self._filled_orders is not None:
@@ -796,7 +798,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "ownerAddress": self._owner_address,
                 }
 
-                response = await self._gateway.kujira_delete_orders(request)
+                response = await self._gateway.kujira_delete_orders_all(request)
             except Exception as exception:
                 response = traceback.format_exc()
 
