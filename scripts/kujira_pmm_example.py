@@ -14,13 +14,12 @@ import jsonpickle
 import numpy as np
 
 from hummingbot.client.hummingbot_application import HummingbotApplication
-from hummingbot.connector.gateway.clob.clob_types import OrderSide as KujiraOrderSide, OrderType as KujiraOrderType
 from hummingbot.connector.gateway.clob.clob_utils import convert_order_side, convert_trading_pair
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_constants import KUJIRA_NATIVE_TOKEN
-from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_types import OrderStatus
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_types import OrderSide, OrderStatus, OrderType
 from hummingbot.connector.gateway.clob_spot.gateway_clob_spot import GatewayCLOBSPOT
 from hummingbot.core.clock import Clock
-from hummingbot.core.data_type.common import OrderType, TradeType
+from hummingbot.core.data_type.common import TradeType
 from hummingbot.core.data_type.order_candidate import OrderCandidate
 from hummingbot.core.gateway.gateway_http_client import GatewayHttpClient
 from hummingbot.strategy.script_strategy_base import ScriptStrategyBase
@@ -49,9 +48,9 @@ class KujiraPMMExample(ScriptStrategyBase):
                 "owner_address": "kujira1d6ld7s0edsh5qsmt3lq4tnrqgvxc3jdrk9z3km",  # TODO remove this dependency!!!
                 "markets": {
                     "kujira_kujira_testnet": [  # Only one market can be used for now
-                        "KUJI-DEMO",  # "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh"
+                        # "KUJI-DEMO",  # "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh"
                         # "KUJI-USK",   # "kujira1wl003xxwqltxpg5pkre0rl605e406ktmq5gnv0ngyjamq69mc2kqm06ey6"
-                        # "DEMO-USK",   # "kujira14sa4u42n2a8kmlvj3qcergjhy6g9ps06rzeth94f2y6grlat6u6ssqzgtg"
+                        "DEMO-USK",   # "kujira14sa4u42n2a8kmlvj3qcergjhy6g9ps06rzeth94f2y6grlat6u6ssqzgtg"
                     ]
                 },
                 "strategy": {
@@ -60,34 +59,34 @@ class KujiraPMMExample(ScriptStrategyBase):
                             "bid": {
                                 "quantity": 1,
                                 "spread_percentage": 1,
-                                "max_liquidity_in_dollars": 5
+                                "max_liquidity_in_dollars": 100
                             },
                             "ask": {
                                 "quantity": 1,
                                 "spread_percentage": 1,
-                                "max_liquidity_in_dollars": 5
+                                "max_liquidity_in_dollars": 100
                             }
                         },
                         {
                             "bid": {
-                                "quantity": 1,
+                                "quantity": 0,
                                 "spread_percentage": 5,
                                 "max_liquidity_in_dollars": 5
                             },
                             "ask": {
-                                "quantity": 1,
+                                "quantity": 0,
                                 "spread_percentage": 5,
                                 "max_liquidity_in_dollars": 5
                             }
                         },
                         {
                             "bid": {
-                                "quantity": 1,
+                                "quantity": 0,
                                 "spread_percentage": 10,
                                 "max_liquidity_in_dollars": 5
                             },
                             "ask": {
-                                "quantity": 1,
+                                "quantity": 0,
                                 "spread_percentage": 10,
                                 "max_liquidity_in_dollars": 5
                             }
@@ -96,7 +95,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                     "tick_interval": 59,
                     "kujira_order_type": OrderType.LIMIT,
                     "price_strategy": "middle",
-                    "middle_price_strategy": "VWAP",
+                    "middle_price_strategy": "SAP",
                     "cancel_all_orders_on_start": True,
                     "cancel_all_orders_on_stop": True,
                     "run_only_once": False
@@ -375,8 +374,8 @@ class KujiraPMMExample(ScriptStrategyBase):
             adjusted_proposal: List[OrderCandidate] = []
 
             balances = await self._get_balances()
-            base_balance = Decimal(balances[self._base_token_name]["free"])
-            quote_balance = Decimal(balances[self._quote_token_name]["free"])
+            base_balance = Decimal(balances["tokens"][self._base_token["id"]]["free"])
+            quote_balance = Decimal(balances["tokens"][self._quote_token["id"]]["free"])
             current_base_balance = base_balance
             current_quote_balance = quote_balance
 
@@ -681,10 +680,9 @@ class KujiraPMMExample(ScriptStrategyBase):
                         "marketId": self._market["id"],
                         "ownerAddress": self._owner_address,
                         "side": convert_order_side(candidate.order_side).value[0],
-                        "price": float(candidate.price),
-                        "amount": float(candidate.amount),
-                        "type": KujiraOrderType[self._configuration["strategy"].get("kujira_order_type", OrderType.LIMIT)].value[
-                            0],
+                        "price": str(candidate.price),
+                        "amount": str(candidate.amount),
+                        "type": self._configuration["strategy"].get("kujira_order_type", OrderType.LIMIT).value,
                         "replaceIfExists": True
                     })
 
@@ -755,14 +753,14 @@ class KujiraPMMExample(ScriptStrategyBase):
             request = None
             response = None
             try:
-                remaining_orders_ids = await self._get_remaining_orders_client_ids(candidate_orders, created_orders)
+                remaining_orders_ids = await self._get_remaining_orders_ids(candidate_orders, created_orders)
 
                 if len(remaining_orders_ids) > 0:
                     request = {
                         "chain": self._configuration["chain"],
                         "network": self._configuration["network"],
                         "connector": self._configuration["connector"],
-                        "clientIds": remaining_orders_ids,
+                        "ids": remaining_orders_ids,
                         "marketId": self._market["id"],
                         "ownerAddress": self._owner_address,
                     }
@@ -836,13 +834,14 @@ class KujiraPMMExample(ScriptStrategyBase):
         finally:
             self._log(DEBUG, """_market_withdraw... end""")
 
-    async def _get_remaining_orders_client_ids(self, candidate_orders, created_orders) -> List[str]:
+    async def _get_remaining_orders_ids(self, candidate_orders, created_orders) -> List[str]:
         self._log(DEBUG, """_get_remaining_orders_ids... end""")
 
         try:
             candidate_orders_ids = [order.client_id for order in candidate_orders] if len(candidate_orders) else []
             created_orders_ids = [order["clientId"] for order in created_orders.values()] if len(created_orders) else []
-            remaining_orders_ids = list(set(candidate_orders_ids) - set(created_orders_ids))
+            remaining_client_orders_ids = list(set(candidate_orders_ids) - set(created_orders_ids))
+            remaining_orders_ids = list(filter(lambda order: (order["clientId"] in remaining_client_orders_ids), created_orders.values()))
 
             self._log(INFO, f"""remaining_orders_ids:\n{self._dump(remaining_orders_ids)}""")
 
@@ -854,7 +853,7 @@ class KujiraPMMExample(ScriptStrategyBase):
         self._log(DEBUG, """_get_duplicated_orders_exchange_ids... start""")
 
         try:
-            open_orders = (await self._get_open_orders())[self._market["id"]].values()
+            open_orders = (await self._get_open_orders())[self._owner_address].values()
 
             open_orders_map = {}
             duplicated_orders_exchange_ids = []
@@ -908,8 +907,8 @@ class KujiraPMMExample(ScriptStrategyBase):
 
     # noinspection PyMethodMayBeStatic
     def _compute_volume_weighted_average_price(self, book: [Dict[str, Any]]) -> np.array:
-        prices = [order['price'] for order in book]
-        amounts = [order['amount'] for order in book]
+        prices = [float(order['price']) for order in book]
+        amounts = [float(order['amount']) for order in book]
 
         prices = np.array(prices)
         amounts = np.array(amounts)
@@ -919,7 +918,7 @@ class KujiraPMMExample(ScriptStrategyBase):
         return vwap
 
     # noinspection PyMethodMayBeStatic
-    def _remove_outliers(self, order_book: [Dict[str, Any]], side: KujiraOrderSide) -> [Dict[str, Any]]:
+    def _remove_outliers(self, order_book: [Dict[str, Any]], side: OrderSide) -> [Dict[str, Any]]:
         prices = [order['price'] for order in order_book]
 
         q75, q25 = np.percentile(prices, [75, 25])
@@ -933,17 +932,17 @@ class KujiraPMMExample(ScriptStrategyBase):
         min_threshold = q25 * 0.5
 
         orders = []
-        if side == KujiraOrderSide.SELL:
+        if side == OrderSide.SELL:
             orders = [order for order in order_book if order['price'] < max_threshold]
-        elif side == KujiraOrderSide.BUY:
+        elif side == OrderSide.BUY:
             orders = [order for order in order_book if order['price'] > min_threshold]
 
         return orders
 
     def _calculate_mid_price(self, bids: [Dict[str, Any]], asks: [Dict[str, Any]], strategy: MiddlePriceStrategy) -> Decimal:
         if strategy == self.MiddlePriceStrategy.SAP:
-            bid_prices = [item['price'] for item in bids]
-            ask_prices = [item['price'] for item in asks]
+            bid_prices = [float(item['price']) for item in bids]
+            ask_prices = [float(item['price']) for item in asks]
 
             best_ask_price = 0
             best_bid_price = 0
@@ -956,8 +955,8 @@ class KujiraPMMExample(ScriptStrategyBase):
 
             return Decimal((best_ask_price + best_bid_price) / 2.0)
         elif strategy == self.MiddlePriceStrategy.WAP:
-            ask_prices = [item['price'] for item in asks]
-            bid_prices = [item['price'] for item in bids]
+            bid_prices = [float(item['price']) for item in bids]
+            ask_prices = [float(item['price']) for item in asks]
 
             best_ask_price = 0
             best_ask_volume = 0
@@ -966,13 +965,13 @@ class KujiraPMMExample(ScriptStrategyBase):
 
             if len(ask_prices) > 0:
                 best_ask_idx = ask_prices.index(min(ask_prices))
-                best_ask_price = asks[best_ask_idx]['price']
-                best_ask_volume = asks[best_ask_idx]['amount']
+                best_ask_price = float(asks[best_ask_idx]['price'])
+                best_ask_volume = float(asks[best_ask_idx]['amount'])
 
             if len(bid_prices) > 0:
                 best_bid_idx = bid_prices.index(max(bid_prices))
-                best_bid_price = bids[best_bid_idx]['price']
-                best_bid_amount = bids[best_bid_idx]['amount']
+                best_bid_price = float(bids[best_bid_idx]['price'])
+                best_bid_amount = float(bids[best_bid_idx]['amount'])
 
             if best_ask_volume + best_bid_amount > 0:
                 return Decimal(
@@ -985,10 +984,10 @@ class KujiraPMMExample(ScriptStrategyBase):
             bids, asks = self._split_percentage(bids, asks)
 
             if len(bids) > 0:
-                bids = self._remove_outliers(bids, KujiraOrderSide.BUY)
+                bids = self._remove_outliers(bids, OrderSide.BUY)
 
             if len(asks) > 0:
-                asks = self._remove_outliers(asks, KujiraOrderSide.SELL)
+                asks = self._remove_outliers(asks, OrderSide.SELL)
 
             book = [*bids, *asks]
 
