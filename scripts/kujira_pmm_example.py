@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import math
+import os
 import time
 import traceback
 from decimal import Decimal
@@ -45,7 +46,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 "chain": "kujira",
                 "network": "testnet",
                 "connector": "kujira",
-                "owner_address": "kujira1d6ld7s0edsh5qsmt3lq4tnrqgvxc3jdrk9z3km",  # TODO remove this dependency!!!
+                "owner_address": os.environ["TEST_KUJIRA_WALLET_PUBLIC_KEY"],
                 "markets": {
                     "kujira_kujira_testnet": [  # Only one market can be used for now
                         # "KUJI-DEMO",  # "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh"
@@ -286,7 +287,7 @@ class KujiraPMMExample(ScriptStrategyBase):
             tick_size = Decimal(self._market["tickSize"])
             min_order_size = Decimal(self._market["minimumOrderSize"])
 
-            order_id = 1
+            client_id = 1
             proposal = []
 
             bid_orders = []
@@ -319,11 +320,11 @@ class KujiraPMMExample(ScriptStrategyBase):
                             price=bid_market_price
                         )
 
-                        bid_order.client_id = str(order_id)
+                        bid_order.client_id = str(client_id)
 
                         bid_orders.append(bid_order)
 
-                        order_id += 1
+                        client_id += 1
 
             ask_orders = []
             for index, layer in enumerate(self._configuration["strategy"]["layers"], start=1):
@@ -353,11 +354,11 @@ class KujiraPMMExample(ScriptStrategyBase):
                             price=ask_market_price
                         )
 
-                        ask_order.client_id = str(order_id)
+                        ask_order.client_id = str(client_id)
 
                         ask_orders.append(ask_order)
 
-                        order_id += 1
+                        client_id += 1
 
             proposal = [*proposal, *bid_orders, *ask_orders]
 
@@ -413,7 +414,12 @@ class KujiraPMMExample(ScriptStrategyBase):
         try:
             self._log(DEBUG, """_get_last_filled_order_price... start""")
 
-            return Decimal((await self._get_last_filled_order())["price"])
+            last_filled_order = await self._get_last_filled_order()
+
+            if last_filled_order:
+                return Decimal(last_filled_order["price"])
+            else:
+                return None
         finally:
             self._log(DEBUG, """_get_last_filled_order_price... end""")
 
@@ -628,7 +634,10 @@ class KujiraPMMExample(ScriptStrategyBase):
 
             filled_orders = await self._get_filled_orders()
 
-            last_filled_order = list(dict(filled_orders[self._market["id"]]).values())[0]
+            if len((filled_orders or {}).get(self._owner_address, {}).get(self._market["id"], {})):
+                last_filled_order = list(dict(filled_orders[self._owner_address][self._market["id"]]).values())[0]
+            else:
+                last_filled_order = None
 
             return last_filled_order
         finally:
@@ -676,7 +685,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 orders = []
                 for candidate in proposal:
                     orders.append({
-                        "clientId": candidate.id,
+                        "clientId": candidate.client_id,
                         "marketId": self._market["id"],
                         "ownerAddress": self._owner_address,
                         "side": convert_order_side(candidate.order_side).value[0],
@@ -838,10 +847,10 @@ class KujiraPMMExample(ScriptStrategyBase):
         self._log(DEBUG, """_get_remaining_orders_ids... end""")
 
         try:
-            candidate_orders_ids = [order.client_id for order in candidate_orders] if len(candidate_orders) else []
-            created_orders_ids = [order["clientId"] for order in created_orders.values()] if len(created_orders) else []
-            remaining_client_orders_ids = list(set(candidate_orders_ids) - set(created_orders_ids))
-            remaining_orders_ids = list(filter(lambda order: (order["clientId"] in remaining_client_orders_ids), created_orders.values()))
+            candidate_orders_client_ids = [order.client_id for order in candidate_orders] if len(candidate_orders) else []
+            created_orders_client_ids = [order["clientId"] for order in created_orders.values()] if len(created_orders) else []
+            remaining_orders_client_ids = list(set(candidate_orders_client_ids) - set(created_orders_client_ids))
+            remaining_orders_ids = list(filter(lambda order: (order["clientId"] in remaining_orders_client_ids), created_orders.values()))
 
             self._log(INFO, f"""remaining_orders_ids:\n{self._dump(remaining_orders_ids)}""")
 
@@ -853,7 +862,7 @@ class KujiraPMMExample(ScriptStrategyBase):
         self._log(DEBUG, """_get_duplicated_orders_exchange_ids... start""")
 
         try:
-            open_orders = (await self._get_open_orders())[self._owner_address].values()
+            open_orders = (await self._get_open_orders()).get(self._owner_address, {}).get(self._market["id"], {}).values()
 
             open_orders_map = {}
             duplicated_orders_exchange_ids = []
