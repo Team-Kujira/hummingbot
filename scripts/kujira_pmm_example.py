@@ -634,8 +634,8 @@ class KujiraPMMExample(ScriptStrategyBase):
 
             filled_orders = await self._get_filled_orders()
 
-            if len((filled_orders or {}).get(self._owner_address, {}).get(self._market["id"], {})):
-                last_filled_order = list(dict(filled_orders[self._owner_address][self._market["id"]]).values())[0]
+            if len((filled_orders or {}).get(self._owner_address, {})):
+                last_filled_order = list(dict(filled_orders[self._owner_address]).values())[0]
             else:
                 last_filled_order = None
 
@@ -862,7 +862,7 @@ class KujiraPMMExample(ScriptStrategyBase):
         self._log(DEBUG, """_get_duplicated_orders_exchange_ids... start""")
 
         try:
-            open_orders = (await self._get_open_orders()).get(self._owner_address, {}).get(self._market["id"], {}).values()
+            open_orders = (await self._get_open_orders()).get(self._owner_address, {}).values()
 
             open_orders_map = {}
             duplicated_orders_exchange_ids = []
@@ -876,11 +876,11 @@ class KujiraPMMExample(ScriptStrategyBase):
                     open_orders_map[open_order["clientId"]].append(open_order)
 
             for orders in open_orders_map.values():
-                orders.sort(key=lambda order: order["exchangeId"])
+                orders.sort(key=lambda order: order["id"])
 
                 duplicated_orders_exchange_ids = [
                     *duplicated_orders_exchange_ids,
-                    *[order["exchangeId"] for order in orders[:-1]]
+                    *[order["id"] for order in orders[:-1]]
                 ]
 
             self._log(INFO, f"""duplicated_orders_exchange_ids:\n{self._dump(duplicated_orders_exchange_ids)}""")
