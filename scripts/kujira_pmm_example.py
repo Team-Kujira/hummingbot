@@ -235,9 +235,9 @@ class KujiraPMMExample(ScriptStrategyBase):
             self._can_run = False
 
             if self._configuration["strategy"]["cancel_all_orders_on_stop"]:
-                await self._cancel_all_orders()
+                await self.retry_async_with_timeout(self._cancel_all_orders)
 
-            await self._market_withdraw()
+            await self.retry_async_with_timeout(self._market_withdraw)
 
             super().stop(clock)
         finally:
@@ -979,6 +979,18 @@ class KujiraPMMExample(ScriptStrategyBase):
         result = number - (current_timestamp_in_milliseconds % number)
 
         return result
+
+    async def retry_async_with_timeout(self, function, *arguments, number_of_retries=3, timeout_in_seconds=60, delay_between_retries_in_seconds=0.5):
+        for retry in range(number_of_retries):
+            try:
+                return await asyncio.wait_for(function(*arguments), timeout_in_seconds)
+            except asyncio.TimeoutError:
+                self._log(ERROR, f"TimeoutError in the attempt {retry+1} of {number_of_retries}.", True)
+            except Exception as exception:
+                message = f"""ERROR in the attempt {retry+1} of {number_of_retries}: {type(exception).__name__} {str(exception)}"""
+                self._log(ERROR, message, True)
+            await asyncio.sleep(delay_between_retries_in_seconds)
+        raise Exception(f"Operation failed with {number_of_retries} attempts.")
 
     def _log(self, level: int, message: str, *args, **kwargs):
         # noinspection PyUnresolvedReferences
