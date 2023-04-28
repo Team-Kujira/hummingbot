@@ -70,26 +70,26 @@ class KujiraPMMExample(ScriptStrategyBase):
                         },
                         {
                             "bid": {
-                                "quantity": 0,
+                                "quantity": 1,
                                 "spread_percentage": 5,
-                                "max_liquidity_in_dollars": 5
+                                "max_liquidity_in_dollars": 100
                             },
                             "ask": {
-                                "quantity": 0,
+                                "quantity": 1,
                                 "spread_percentage": 5,
-                                "max_liquidity_in_dollars": 5
+                                "max_liquidity_in_dollars": 100
                             }
                         },
                         {
                             "bid": {
-                                "quantity": 0,
+                                "quantity": 1,
                                 "spread_percentage": 10,
-                                "max_liquidity_in_dollars": 5
+                                "max_liquidity_in_dollars": 100
                             },
                             "ask": {
-                                "quantity": 0,
+                                "quantity": 1,
                                 "spread_percentage": 10,
-                                "max_liquidity_in_dollars": 5
+                                "max_liquidity_in_dollars": 100
                             }
                         },
                     ],
@@ -202,11 +202,8 @@ class KujiraPMMExample(ScriptStrategyBase):
             await self._get_filled_orders(use_cache=False)
             await self._get_balances(use_cache=False)
 
-            try:
-                open_orders_ids = [order["id"] for order in open_orders]
-                await self._cancel_currently_untracked_orders(open_orders_ids)
-            except Exception as exception:
-                self._handle_error(exception)
+            open_orders_ids = list(open_orders[self._owner_address].keys())
+            await self._cancel_currently_untracked_orders(open_orders_ids)
 
             proposal: List[OrderCandidate] = await self._create_proposal()
             candidate_orders: List[OrderCandidate] = await self._adjust_proposal_to_budget(proposal)
@@ -705,7 +702,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 if len(orders):
                     response = await self._gateway.kujira_post_orders(request)
 
-                    self._currently_tracked_orders_ids = [order["id"] for order in response]
+                    self._currently_tracked_orders_ids = list(response.keys())
                     self._tracked_orders_ids.extend(self._currently_tracked_orders_ids)
                 else:
                     self._log(WARNING, "No order was defined for placement/replacement. Skipping.", True)
@@ -755,76 +752,6 @@ class KujiraPMMExample(ScriptStrategyBase):
                           f"""gateway.kujira_delete_orders:\nrequest:\n{self._dump(request)}\nresponse:\n{self._dump(response)}""")
         finally:
             self._log(DEBUG, """_cancel_untracked_orders... end""")
-
-    async def _cancel_duplicated_orders(self):
-        try:
-            self._log(DEBUG, """_cancel_duplicated_orders... start""")
-
-            request = None
-            response = None
-            try:
-                duplicated_orders_ids = await self._get_duplicated_orders_ids()
-
-                if len(duplicated_orders_ids) > 0:
-                    request = {
-                        "chain": self._configuration["chain"],
-                        "network": self._configuration["network"],
-                        "connector": self._configuration["connector"],
-                        "ids": duplicated_orders_ids,
-                        "marketId": self._market["id"],
-                        "ownerAddress": self._owner_address,
-                    }
-
-                    response = await self._gateway.kujira_delete_orders(request)
-                else:
-                    self._log(INFO, "No order needed to be canceled.")
-                    response = {}
-
-                return response
-            except Exception as exception:
-                response = traceback.format_exc()
-
-                raise exception
-            finally:
-                self._log(INFO,
-                          f"""gateway.kujira_delete_orders:\nrequest:\n{self._dump(request)}\nresponse:\n{self._dump(response)}""")
-        finally:
-            self._log(DEBUG, """_cancel_duplicated_orders... end""")
-
-    async def _cancel_remaining_orders(self, candidate_orders, created_orders):
-        try:
-            self._log(DEBUG, """_cancel_duplicated_and_remaining_orders... start""")
-
-            request = None
-            response = None
-            try:
-                remaining_orders_ids = await self._get_remaining_orders_ids(candidate_orders, created_orders)
-
-                if len(remaining_orders_ids) > 0:
-                    request = {
-                        "chain": self._configuration["chain"],
-                        "network": self._configuration["network"],
-                        "connector": self._configuration["connector"],
-                        "ids": remaining_orders_ids,
-                        "marketId": self._market["id"],
-                        "ownerAddress": self._owner_address,
-                    }
-
-                    response = await self._gateway.kujira_delete_orders(request)
-                else:
-                    self._log(INFO, "No order needed to be canceled.")
-                    response = {}
-
-                return response
-            except Exception as exception:
-                response = traceback.format_exc()
-
-                raise exception
-            finally:
-                self._log(INFO,
-                          f"""gateway.kujira_delete_orders:\nrequest:\n{self._dump(request)}\nresponse:\n{self._dump(response)}""")
-        finally:
-            self._log(DEBUG, """_cancel_duplicated_and_remaining_orders... end""")
 
     async def _cancel_all_orders(self):
         try:
