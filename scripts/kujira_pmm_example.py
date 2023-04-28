@@ -50,8 +50,8 @@ class KujiraPMMExample(ScriptStrategyBase):
                 "markets": {
                     "kujira_kujira_testnet": [  # Only one market can be used for now
                         # "KUJI-DEMO",  # "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh"
-                        # "KUJI-USK",   # "kujira1wl003xxwqltxpg5pkre0rl605e406ktmq5gnv0ngyjamq69mc2kqm06ey6"
-                        "DEMO-USK",   # "kujira14sa4u42n2a8kmlvj3qcergjhy6g9ps06rzeth94f2y6grlat6u6ssqzgtg"
+                        "KUJI-USK",   # "kujira1wl003xxwqltxpg5pkre0rl605e406ktmq5gnv0ngyjamq69mc2kqm06ey6"
+                        # "DEMO-USK",   # "kujira14sa4u42n2a8kmlvj3qcergjhy6g9ps06rzeth94f2y6grlat6u6ssqzgtg"
                     ]
                 },
                 "strategy": {
@@ -236,7 +236,8 @@ class KujiraPMMExample(ScriptStrategyBase):
 
             if self._configuration["strategy"]["cancel_all_orders_on_stop"]:
                 await self._cancel_all_orders()
-                await self._market_withdraw()
+
+            await self._market_withdraw()
 
             super().stop(clock)
         finally:
