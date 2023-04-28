@@ -117,6 +117,8 @@ class KujiraPMMExample(ScriptStrategyBase):
             self._market: Dict[str, Any]
             self._balances: Dict[str, Any] = {}
             self._tickers: Dict[str, Any]
+            self._currently_tracked_orders_ids: [str] = []
+            self._tracked_orders_ids: [str] = []
             self._open_orders: Dict[str, Any]
             self._filled_orders: Dict[str, Any]
             self._vwap_threshold = 50
@@ -196,24 +198,20 @@ class KujiraPMMExample(ScriptStrategyBase):
             except Exception as exception:
                 self._handle_error(exception)
 
-            await self._get_open_orders(use_cache=False)
+            open_orders = await self._get_open_orders(use_cache=False)
             await self._get_filled_orders(use_cache=False)
             await self._get_balances(use_cache=False)
 
             try:
-                await self._cancel_duplicated_orders()
+                open_orders_ids = [order["id"] for order in open_orders]
+                await self._cancel_currently_untracked_orders(open_orders_ids)
             except Exception as exception:
                 self._handle_error(exception)
 
             proposal: List[OrderCandidate] = await self._create_proposal()
             candidate_orders: List[OrderCandidate] = await self._adjust_proposal_to_budget(proposal)
 
-            replaced_orders = await self._replace_orders(candidate_orders)
-
-            try:
-                await self._cancel_remaining_orders(candidate_orders, replaced_orders)
-            except Exception as exception:
-                self._handle_error(exception)
+            await self._replace_orders(candidate_orders)
         except Exception as exception:
             self._handle_error(exception)
         finally:
@@ -706,6 +704,9 @@ class KujiraPMMExample(ScriptStrategyBase):
 
                 if len(orders):
                     response = await self._gateway.kujira_post_orders(request)
+
+                    self._currently_tracked_orders_ids = [order["id"] for order in response]
+                    self._tracked_orders_ids.extend(self._currently_tracked_orders_ids)
                 else:
                     self._log(WARNING, "No order was defined for placement/replacement. Skipping.", True)
                     response = []
@@ -720,6 +721,41 @@ class KujiraPMMExample(ScriptStrategyBase):
         finally:
             self._log(DEBUG, """_replace_orders... end""")
 
+    async def _cancel_currently_untracked_orders(self, open_orders_ids: List[str]):
+        try:
+            self._log(DEBUG, """_cancel_untracked_orders... start""")
+
+            request = None
+            response = None
+            try:
+                untracked_orders_ids = list(set(self._tracked_orders_ids).intersection(set(open_orders_ids)) - set(self._currently_tracked_orders_ids))
+
+                if len(untracked_orders_ids) > 0:
+                    request = {
+                        "chain": self._configuration["chain"],
+                        "network": self._configuration["network"],
+                        "connector": self._configuration["connector"],
+                        "ids": untracked_orders_ids,
+                        "marketId": self._market["id"],
+                        "ownerAddress": self._owner_address,
+                    }
+
+                    response = await self._gateway.kujira_delete_orders(request)
+                else:
+                    self._log(INFO, "No order needed to be canceled.")
+                    response = {}
+
+                return response
+            except Exception as exception:
+                response = traceback.format_exc()
+
+                raise exception
+            finally:
+                self._log(INFO,
+                          f"""gateway.kujira_delete_orders:\nrequest:\n{self._dump(request)}\nresponse:\n{self._dump(response)}""")
+        finally:
+            self._log(DEBUG, """_cancel_untracked_orders... end""")
+
     async def _cancel_duplicated_orders(self):
         try:
             self._log(DEBUG, """_cancel_duplicated_orders... start""")
@@ -727,14 +763,14 @@ class KujiraPMMExample(ScriptStrategyBase):
             request = None
             response = None
             try:
-                duplicated_orders_exchange_ids = await self._get_duplicated_orders_exchange_ids()
+                duplicated_orders_ids = await self._get_duplicated_orders_ids()
 
-                if len(duplicated_orders_exchange_ids) > 0:
+                if len(duplicated_orders_ids) > 0:
                     request = {
                         "chain": self._configuration["chain"],
                         "network": self._configuration["network"],
                         "connector": self._configuration["connector"],
-                        "ids": duplicated_orders_exchange_ids,
+                        "ids": duplicated_orders_ids,
                         "marketId": self._market["id"],
                         "ownerAddress": self._owner_address,
                     }
@@ -858,14 +894,14 @@ class KujiraPMMExample(ScriptStrategyBase):
         finally:
             self._log(DEBUG, """_get_remaining_orders_ids... end""")
 
-    async def _get_duplicated_orders_exchange_ids(self) -> List[str]:
-        self._log(DEBUG, """_get_duplicated_orders_exchange_ids... start""")
+    async def _get_duplicated_orders_ids(self) -> List[str]:
+        self._log(DEBUG, """_get_duplicated_orders_ids... start""")
 
         try:
             open_orders = (await self._get_open_orders()).get(self._owner_address, {}).values()
 
             open_orders_map = {}
-            duplicated_orders_exchange_ids = []
+            duplicated_orders_ids = []
 
             for open_order in open_orders:
                 if open_order["clientId"] == "0":  # Avoid touching manually created orders.
@@ -878,16 +914,16 @@ class KujiraPMMExample(ScriptStrategyBase):
             for orders in open_orders_map.values():
                 orders.sort(key=lambda order: order["id"])
 
-                duplicated_orders_exchange_ids = [
-                    *duplicated_orders_exchange_ids,
+                duplicated_orders_ids = [
+                    *duplicated_orders_ids,
                     *[order["id"] for order in orders[:-1]]
                 ]
 
-            self._log(INFO, f"""duplicated_orders_exchange_ids:\n{self._dump(duplicated_orders_exchange_ids)}""")
+            self._log(INFO, f"""duplicated_orders_ids:\n{self._dump(duplicated_orders_ids)}""")
 
-            return duplicated_orders_exchange_ids
+            return duplicated_orders_ids
         finally:
-            self._log(DEBUG, """_get_duplicated_orders_exchange_ids... end""")
+            self._log(DEBUG, """_get_duplicated_orders_ids... end""")
 
     # noinspection PyMethodMayBeStatic
     def _parse_order_book(self, orderbook: Dict[str, Any]) -> List[Union[List[Dict[str, Any]], List[Dict[str, Any]]]]:
