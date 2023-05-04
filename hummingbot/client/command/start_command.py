@@ -4,6 +4,7 @@ import threading
 import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
 
+import nest_asyncio
 import pandas as pd
 
 import hummingbot.client.settings as settings
@@ -20,6 +21,8 @@ from hummingbot.core.utils.async_utils import safe_ensure_future
 from hummingbot.exceptions import OracleRateUnavailable
 from hummingbot.strategy.script_strategy_base import ScriptStrategyBase
 from hummingbot.user.user_balances import UserBalances
+
+nest_asyncio.apply()
 
 if TYPE_CHECKING:
     from hummingbot.client.hummingbot_application import HummingbotApplication  # noqa: F401
