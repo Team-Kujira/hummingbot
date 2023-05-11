@@ -1441,7 +1441,7 @@ class GatewayHttpClient:
             "network": network,
             "address": address,
         }
-        return await self.api_request("post", "kujira/balances", request_payload)
+        return await self.api_request("post", "kujira/injective/balances", request_payload)
 
     async def kujira_get_status(
         self,
