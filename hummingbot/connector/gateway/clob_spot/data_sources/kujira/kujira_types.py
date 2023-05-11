@@ -1,7 +1,7 @@
 from enum import Enum
 
 from pyinjective.async_client import AsyncClient
-from pyinjective.composer import Composer as InjectiveComposer
+from pyinjective.composer import Composer as ProtoMsgComposer
 from pyinjective.constant import Denom, Network
 from pyinjective.orderhash import OrderHashResponse, build_eip712_msg, hash_order
 from pyinjective.proto.exchange.injective_accounts_rpc_pb2 import StreamSubaccountBalanceResponse, SubaccountBalance
@@ -116,7 +116,7 @@ class TickerSource(Enum):
 
 
 AsyncClient = AsyncClient
-InjectiveComposer = InjectiveComposer
+ProtoMsgComposer = ProtoMsgComposer
 Network = Network
 OrderHashResponse = OrderHashResponse
 build_eip712_msg = build_eip712_msg
@@ -149,6 +149,7 @@ derivative_quantity_to_backend = derivative_quantity_to_backend
 
 __all__ = [
     "AsyncClient",
+    "ProtoMsgComposer",
     "Network",
     "OrderHashResponse",
     "build_eip712_msg",

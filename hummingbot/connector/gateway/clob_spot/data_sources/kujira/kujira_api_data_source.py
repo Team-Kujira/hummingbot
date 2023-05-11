@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 from asyncio import Lock
+from collections import defaultdict
 from decimal import Decimal
 from enum import Enum
 from math import floor
@@ -45,10 +46,10 @@ from .kujira_types import (
     AsyncClient,
     Coin,
     GetTxByTxHashResponse,
-    InjectiveComposer,
     MarketsResponse,
     Network,
     Portfolio,
+    ProtoMsgComposer,
     SpotMarketInfo,
     SpotOrder,
     SpotOrderHistory,
@@ -95,7 +96,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         else:
             raise ValueError(f"Invalid network: {self._network}")
         self._client = AsyncClient(network=self._network_obj)
-        self._composer = InjectiveComposer(network=self._network_obj.string())
+        self._composer = ProtoMsgComposer(network=self._network_obj.string())
         self._order_hash_manager: Optional[OrderHashManager] = None
 
         self._markets_info: Dict[str, SpotMarketInfo] = {}
@@ -113,8 +114,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._order_placement_lock = Lock()
 
         # Local Balance
-        self._account_balances: Dict[str, Dict[str, Decimal]] = {}
-        self._account_available_balances: Dict[str, Dict[str, Decimal]] = {}
+        self._account_balances: defaultdict[str, Decimal] = defaultdict(lambda: Decimal("0"))
+        self._account_available_balances: defaultdict[str, Decimal] = defaultdict(lambda: Decimal("0"))
 
     @property
     def real_time_balance_update(self) -> bool:
