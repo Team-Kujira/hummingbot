@@ -14,9 +14,9 @@ KUJIRA_NATIVE_TOKEN = {
 # Injective related constants:
 ##########################
 
-NONCE_PATH = "injective/exchange/v1beta1/exchange"
+NONCE_PATH = "kujira/exchange/v1beta1/exchange"
 
-CONNECTOR_NAME = "injective"
+CONNECTOR_NAME = "kujira"
 REQUESTS_SKIP_STEP = 100
 LOST_ORDER_COUNT_LIMIT = 10
 ORDER_CHAIN_PROCESSING_TIMEOUT = 5
@@ -40,16 +40,16 @@ BACKEND_TO_CLIENT_ORDER_STATE_MAP = {
 
 INJ_TOKEN_DENOM = "inj"
 MIN_GAS_PRICE_IN_INJ = (
-    5 * Decimal("1e8")  # https://api.injective.exchange/#faq-3-how-can-i-calculate-the-gas-fees-in-inj
+    5 * Decimal("1e8")  # https://api.kujira.exchange/#faq-3-how-can-i-calculate-the-gas-fees-in-inj
 )
 BASE_GAS = Decimal("100e3")
 GAS_BUFFER = Decimal("20e3")
 SPOT_SUBMIT_ORDER_GAS = Decimal("45e3")
 SPOT_CANCEL_ORDER_GAS = Decimal("25e3")
 
-MSG_CREATE_SPOT_LIMIT_ORDER = "/injective.exchange.v1beta1.MsgCreateSpotLimitOrder"
-MSG_CANCEL_SPOT_ORDER = "/injective.exchange.v1beta1.MsgCancelSpotOrder"
-MSG_BATCH_UPDATE_ORDERS = "/injective.exchange.v1beta1.MsgBatchUpdateOrders"
+MSG_CREATE_SPOT_LIMIT_ORDER = "/kujira.exchange.v1beta1.MsgCreateSpotLimitOrder"
+MSG_CANCEL_SPOT_ORDER = "/kujira.exchange.v1beta1.MsgCancelSpotOrder"
+MSG_BATCH_UPDATE_ORDERS = "/kujira.exchange.v1beta1.MsgBatchUpdateOrders"
 
 ACC_NONCE_PATH_RATE_LIMIT_ID = "acc_nonce"
 RATE_LIMITS = [RateLimit(limit_id=ACC_NONCE_PATH_RATE_LIMIT_ID, limit=100, time_interval=1)]
