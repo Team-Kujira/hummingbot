@@ -98,7 +98,16 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         pass
 
     async def get_account_balances(self) -> Dict[str, Dict[str, Decimal]]:
-        pass
+
+        payload = {
+            "chain": self._chain,
+            "network": self._network,
+            "address": self._account_address,
+        }
+
+        result = await self._get_gateway_instance().clob_kujira_balances(**payload)
+
+        return result
 
     async def get_order_status_update(self, in_flight_order: InFlightOrder) -> OrderUpdate:
         pass
