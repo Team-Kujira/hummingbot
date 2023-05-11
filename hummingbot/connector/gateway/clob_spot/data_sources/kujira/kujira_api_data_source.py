@@ -172,7 +172,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         market = self._markets_info[trading_pair]
         order_book_response = await self._client.get_spot_orderbooksV2(market_ids=[market.market_id])
         price_scale = self._get_backend_price_scaler(market=market)
-        size_scale = self._get_backend_denom_scaler(denom_meta=market.base_token_meta)
+        size_scale = self._get_backend_denom_scaler(denom_meta=market["baseToken"])
         last_update_timestamp_ms = 0
         bids = []
         orderbook = order_book_response.orderbooks[0].orderbook
@@ -584,16 +584,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 self._account_available_balances[asset_name] = balance_entry["available_balance"]
 
     def _update_market_id_to_active_spot_markets(self, markets: MarketsResponse):
-        markets_dict = {market.market_id: market for market in markets.markets}
+        markets_dict = {market["id"]: market for market in markets.values()}
         self._market_id_to_active_spot_markets.clear()
         self._market_id_to_active_spot_markets.update(markets_dict)
 
     def _parse_trading_rule(self, trading_pair: str, market_info: SpotMarketInfo) -> TradingRule:
         min_price_tick_size = self._convert_price_from_backend(
-            price=market_info.min_price_tick_size, market=market_info
+            # price=market_info.min_price_tick_size, market=market_info
+            price=market_info["tickSize"], market=market_info
         )
         min_quantity_tick_size = self._convert_size_from_backend(
-            size=market_info.min_quantity_tick_size, market=market_info
+            # size=market_info.min_quantity_tick_size, market=market_info
+            size=market_info["minimumOrderSize"], market=market_info
         )
         trading_rule = TradingRule(
             trading_pair=trading_pair,
@@ -676,11 +678,11 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     def _update_denom_to_token_meta(self, markets: MarketsResponse):
         self._denom_to_token_meta.clear()
-        for market in markets.markets:
-            if market.base_token_meta.symbol != "":  # the meta is defined
-                self._denom_to_token_meta[market.base_denom] = market.base_token_meta
-            if market.quote_token_meta.symbol != "":  # the meta is defined
-                self._denom_to_token_meta[market.quote_denom] = market.quote_token_meta
+        for market in markets.values():
+            if market["baseToken"]["symbol"] != "":  # the meta is defined
+                self._denom_to_token_meta[market["baseToken"]["id"]] = market["baseToken"]
+            if market["quoteToken"]["symbol"] != "":  # the meta is defined
+                self._denom_to_token_meta[market["quoteToken"]["id"]] = market["quoteToken"]
 
     async def _start_streams(self):
         self._trades_stream_listener = (
@@ -804,7 +806,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         trading_pair = self._get_trading_pair_from_market_id(market_id=market_id)
         market = self._market_id_to_active_spot_markets[market_id]
         price_scale = self._get_backend_price_scaler(market=market)
-        size_scale = self._get_backend_denom_scaler(denom_meta=market.base_token_meta)
+        size_scale = self._get_backend_denom_scaler(denom_meta=market["baseToken"])
         bids = [
             (Decimal(bid.price) * price_scale, Decimal(bid.quantity) * size_scale)
             for bid in order_book_update.orderbook.buys
@@ -1028,17 +1030,21 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     def _get_trading_pair_from_market_id(self, market_id: str) -> str:
         market = self._market_id_to_active_spot_markets[market_id]
         trading_pair = combine_to_hb_trading_pair(
-            base=market.base_token_meta.symbol, quote=market.quote_token_meta.symbol
+            base=market["baseToken"]["symbol"], quote=market["quoteToken"]["symbol"]
         )
         return trading_pair
 
     def _get_exchange_trading_pair_from_market_info(self, market_info: Any) -> str:
-        return market_info.market_id
+        return market_info["id"]
 
     def _get_maker_taker_exchange_fee_rates_from_market_info(self, market_info: Any) -> MakerTakerExchangeFeeRates:
-        fee_scaler = Decimal("1") - Decimal(market_info.service_provider_fee)
-        maker_fee = Decimal(market_info.maker_fee_rate) * fee_scaler
-        taker_fee = Decimal(market_info.taker_fee_rate) * fee_scaler
+        # fee_scaler = Decimal("1") - Decimal(market_info.service_provider_fee)
+        # maker_fee = Decimal(market_info.maker_fee_rate) * fee_scaler
+        # taker_fee = Decimal(market_info.taker_fee_rate) * fee_scaler
+
+        maker_fee = Decimal("0")
+        taker_fee = Decimal("0")
+
         return MakerTakerExchangeFeeRates(
             maker=maker_fee, taker=taker_fee, maker_flat_fees=[], taker_flat_fees=[]
         )
@@ -1065,16 +1071,16 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     @staticmethod
     def _get_backend_price_scaler(market: SpotMarketInfo) -> Decimal:
-        scale = Decimal(f"1e{market.base_token_meta.decimals - market.quote_token_meta.decimals}")
+        scale = Decimal(f"""1e{market["baseToken"].decimals - market["quoteToken"].decimals}""")
         return scale
 
     def _convert_quote_from_backend(self, quote_amount: str, market: SpotMarketInfo) -> Decimal:
-        scale = self._get_backend_denom_scaler(denom_meta=market.quote_token_meta)
+        scale = self._get_backend_denom_scaler(denom_meta=market["quoteToken"])
         scaled_quote_amount = Decimal(quote_amount) * scale
         return scaled_quote_amount
 
     def _convert_size_from_backend(self, size: str, market: SpotMarketInfo) -> Decimal:
-        scale = self._get_backend_denom_scaler(denom_meta=market.base_token_meta)
+        scale = self._get_backend_denom_scaler(denom_meta=market["baseToken"])
         size_tick_size = Decimal(market.min_quantity_tick_size) * scale
         scaled_size = Decimal(size) * scale
         return self._floor_to(scaled_size, size_tick_size)
