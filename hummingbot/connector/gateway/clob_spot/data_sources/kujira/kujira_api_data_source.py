@@ -43,13 +43,10 @@ from hummingbot.logger import HummingbotLogger
 
 from .kujira_types import (
     AccountPortfolioResponse,
-    AsyncClient,
     Coin,
     GetTxByTxHashResponse,
     MarketsResponse,
-    Network,
     Portfolio,
-    ProtoMsgComposer,
     SpotMarketInfo,
     SpotOrder,
     SpotOrderHistory,
@@ -89,14 +86,14 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._network = connector_spec["network"]
         self._sub_account_id = connector_spec["wallet_address"]
         self._account_address: str = self._sub_account_id
-        if self._network == "mainnet":
-            self._network_obj = Network.mainnet()
-        elif self._network == "testnet":
-            self._network_obj = Network.testnet()
-        else:
-            raise ValueError(f"Invalid network: {self._network}")
-        self._client = AsyncClient(network=self._network_obj)
-        self._composer = ProtoMsgComposer(network=self._network_obj.string())
+        # if self._network == "mainnet":
+        #     self._network_obj = Network.mainnet()
+        # elif self._network == "testnet":
+        #     self._network_obj = Network.testnet()
+        # else:
+        #     raise ValueError(f"Invalid network: {self._network}")
+        # self._client = AsyncClient(network=self._network_obj)
+        # self._composer = ProtoMsgComposer(network=self._network_obj.string())
         self._order_hash_manager: Optional[OrderHashManager] = None
 
         self._markets_info: Dict[str, SpotMarketInfo] = {}
@@ -163,7 +160,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def check_network_status(self) -> NetworkStatus:
         status = NetworkStatus.CONNECTED
         try:
-            await self._client.ping()
+            # await self._client.ping()
             await self._get_gateway_instance().ping_gateway()
         except asyncio.CancelledError:
             raise
