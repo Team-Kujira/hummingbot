@@ -526,21 +526,21 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def _update_account_address_and_create_order_hash_manager(self):
         if not self._order_placement_lock.locked():
             raise RuntimeError("The order-placement lock must be acquired before creating the order hash manager.")
-        response: Dict[str, Any] = await self._get_gateway_instance().clob_kujira_balances(
-            chain=self._chain, network=self._network, address=self._sub_account_id
-        )
-        self._account_address: str = response["injectiveAddress"]
+        # response: Dict[str, Any] = await self._get_gateway_instance().clob_kujira_balances(
+        #     chain=self._chain, network=self._network, address=self._sub_account_id
+        # )
+        # self._account_address: str = response["injectiveAddress"]
 
-        await self._client.get_account(self._account_address)
-        await self._client.sync_timeout_height()
+        # await self._client.get_account(self._account_address)
+        # await self._client.sync_timeout_height()
         tasks_to_await_submitted_orders_to_be_processed_by_chain = [
             asyncio.wait_for(order.wait_until_processed_by_exchange(), timeout=ORDER_CHAIN_PROCESSING_TIMEOUT)
             for order in self._gateway_order_tracker.active_orders.values()
             if order.creation_transaction_hash is not None
         ]  # orders that have been sent to the chain but not yet added to a block will affect the order nonce
         await safe_gather(*tasks_to_await_submitted_orders_to_be_processed_by_chain, return_exceptions=True)  # await their processing
-        self._order_hash_manager = OrderHashManager(network=self._network_obj, sub_account_id=self._sub_account_id)
-        await self._order_hash_manager.start()
+        # self._order_hash_manager = OrderHashManager(network=self._network_obj, sub_account_id=self._sub_account_id)
+        # await self._order_hash_manager.start()
 
     def _check_markets_initialized(self) -> bool:
         return (
@@ -561,8 +561,16 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._update_denom_to_token_meta(markets=markets)
 
     async def _get_spot_markets(self) -> MarketsResponse:
-        market_status = "active"
-        markets = await self._client.get_spot_markets(market_status=market_status)
+        # market_status = "active"
+        # markets = await self._client.get_spot_markets(market_status=market_status)
+        # return markets
+
+        markets = await self._get_gateway_instance().kujira_get_markets_all({
+            "chain": self._chain,
+            "network": self._network,
+            "connector": self._connector_name
+        })
+
         return markets
 
     def _update_local_balances(self, balances: Dict[str, Dict[str, Decimal]]):
@@ -658,9 +666,9 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     def _update_trading_pair_to_active_spot_markets(self, markets: MarketsResponse):
         markets_dict = {}
-        for market in markets.markets:
+        for market in markets.values():
             trading_pair = combine_to_hb_trading_pair(
-                base=market.base_token_meta.symbol, quote=market.quote_token_meta.symbol
+                base=market["baseToken"]["symbol"], quote=market["quoteToken"]["symbol"]
             )
             markets_dict[trading_pair] = market
         self._markets_info.clear()
