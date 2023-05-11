@@ -30,8 +30,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._connector_name = CONNECTOR_NAME
         self._chain = connector_spec["chain"]
         self._network = connector_spec["network"]
-        self._sub_account_id = connector_spec["wallet_address"]
-        self._account_address: str = self._sub_account_id
+        self._account_address: str = connector_spec["wallet_address"]
 
     @property
     def real_time_balance_update(self) -> bool:
@@ -61,22 +60,33 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "chain": self._chain,
             "network": self._network,
             "trading_pair": order.trading_pair,
-            "address": self._sub_account_id,
+            "address": self._account_address,
             "trade_type": order.trade_type,
             "order_type": order.order_type,
             "price": order.price,
             "size": order.amount
         }
 
-        order_result: Dict[str, Any] = await self._get_gateway_instance().clob_place_order(**payload)
+        result: Dict[str, Any] = await self._get_gateway_instance().clob_place_order(**payload)
 
-        return "", order_result
+        return "", result
 
     async def batch_order_create(self, orders_to_create: List[InFlightOrder]) -> List[PlaceOrderResult]:
         pass
 
     async def cancel_order(self, order: GatewayInFlightOrder) -> Tuple[bool, Optional[Dict[str, Any]]]:
-        pass
+
+        payload = {
+            "connector": self._connector_name,
+            "chain": self._chain,
+            "network": self._network,
+            "address": self._account_address,
+            "market": order.trading_pair,
+            "orderId": order.exchange_order_id,
+        }
+        result = await self._get_gateway_instance().clob_place_order(**payload)
+
+        return True, result
 
     async def batch_order_cancel(self, orders_to_cancel: List[InFlightOrder]) -> List[CancelOrderResult]:
         pass
