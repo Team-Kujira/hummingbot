@@ -1,3 +1,4 @@
+import asyncio
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
@@ -122,7 +123,12 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         pass
 
     async def check_network_status(self) -> NetworkStatus:
-        pass
+        try:
+            await self._get_gateway_instance().ping_gateway()
+        except asyncio.InvalidStateError(NetworkStatus.NOT_CONNECTED):
+            raise "No Gateway's connection"
+        status = NetworkStatus.CONNECTED
+        return status
 
     def _check_markets_initialized(self) -> bool:
         pass
