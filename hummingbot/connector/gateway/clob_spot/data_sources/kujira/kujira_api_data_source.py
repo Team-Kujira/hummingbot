@@ -529,7 +529,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def _update_account_address_and_create_order_hash_manager(self):
         if not self._order_placement_lock.locked():
             raise RuntimeError("The order-placement lock must be acquired before creating the order hash manager.")
-        response: Dict[str, Any] = await self._get_gateway_instance().clob_injective_balances(
+        response: Dict[str, Any] = await self._get_gateway_instance().clob_kujira_balances(
             chain=self._chain, network=self._network, address=self._sub_account_id
         )
         self._account_address: str = response["injectiveAddress"]
