@@ -623,12 +623,20 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         trading_fees = {}
         for trading_pair, market in self._markets_info.items():
-            fee_scaler = Decimal("1") - Decimal(market.service_provider_fee)
-            maker_fee = Decimal(market.maker_fee_rate) * fee_scaler
-            taker_fee = Decimal(market.taker_fee_rate) * fee_scaler
+            # fee_scaler = Decimal("1") - Decimal(market.service_provider_fee)
+            # maker_fee = Decimal(market.maker_fee_rate) * fee_scaler
+            # taker_fee = Decimal(market.taker_fee_rate) * fee_scaler
+            # trading_fees[trading_pair] = MakerTakerExchangeFeeRates(
+            #     maker=maker_fee, taker=taker_fee, maker_flat_fees=[], taker_flat_fees=[]
+            # )
+
+            maker_fee = Decimal("0")
+            taker_fee = Decimal("0")
+
             trading_fees[trading_pair] = MakerTakerExchangeFeeRates(
                 maker=maker_fee, taker=taker_fee, maker_flat_fees=[], taker_flat_fees=[]
             )
+
         return trading_fees
 
     async def _get_booked_order_status_update(
@@ -1059,7 +1067,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     def _get_market_ids(self) -> List[str]:
         market_ids = [
-            self._markets_info[trading_pair].market_id
+            self._markets_info[trading_pair]["id"]
             for trading_pair in self._trading_pairs
         ]
         return market_ids
