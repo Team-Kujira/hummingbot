@@ -108,6 +108,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         result = await self._get_gateway_instance().clob_kujira_balances(**payload)
 
+        for value in result.values():
+            for item in value:
+                item['amount'] = Decimal(item['amount'])
+
         return result
 
     async def get_order_status_update(self, in_flight_order: InFlightOrder) -> OrderUpdate:
