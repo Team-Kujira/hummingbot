@@ -41,12 +41,9 @@ from hummingbot.core.network_iterator import NetworkStatus
 from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
 from hummingbot.logger import HummingbotLogger
 
-from .kujira_types import (
-    AccountPortfolioResponse,
-    Coin,
+from .kujira_types import (  # AccountPortfolioResponse,; Coin,; Portfolio,; SubaccountBalanceV2,
     GetTxByTxHashResponse,
     MarketsResponse,
-    Portfolio,
     SpotMarketInfo,
     SpotOrder,
     SpotOrderHistory,
@@ -57,7 +54,6 @@ from .kujira_types import (
     StreamSubaccountBalanceResponse,
     StreamTradesResponse,
     StreamTxsResponse,
-    SubaccountBalanceV2,
     TokenMeta,
 )
 
@@ -116,11 +112,11 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     @property
     def real_time_balance_update(self) -> bool:
-        return True
+        return False
 
     @property
     def events_are_streamed(self) -> bool:
-        return True
+        return False
 
     @staticmethod
     def supported_stream_events() -> List[Enum]:
@@ -148,7 +144,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             coro=self._update_markets_loop()
         )
         await self._update_markets()  # required for the streams
-        await self._start_streams()
+        # await self._start_streams()
         self._gateway_order_tracker.lost_order_count_limit = LOST_ORDER_COUNT_LIMIT
 
     async def stop(self):
@@ -170,19 +166,25 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     async def get_order_book_snapshot(self, trading_pair: str) -> OrderBookMessage:
         market = self._markets_info[trading_pair]
-        order_book_response = await self._client.get_spot_orderbooksV2(market_ids=[market.market_id])
+        # order_book_response = await self._client.get_spot_orderbooksV2(market_ids=[market.market_id])
+        order_book_response = await self._get_gateway_instance().get_clob_orderbook_snapshot(
+            chain=self._chain,
+            network=self._network,
+            connector=self._connector_name,
+            trading_pair=trading_pair
+        )
         price_scale = self._get_backend_price_scaler(market=market)
         size_scale = self._get_backend_denom_scaler(denom_meta=market["baseToken"])
         last_update_timestamp_ms = 0
         bids = []
-        orderbook = order_book_response.orderbooks[0].orderbook
-        for bid in orderbook.buys:
-            bids.append((Decimal(bid.price) * price_scale, Decimal(bid.quantity) * size_scale))
-            last_update_timestamp_ms = max(last_update_timestamp_ms, bid.timestamp)
+        orderbook = order_book_response
+        for bid in orderbook["buys"]:
+            bids.append((Decimal(bid["price"]) * price_scale, Decimal(bid["quantity"]) * size_scale))
+            last_update_timestamp_ms = max(last_update_timestamp_ms, bid["timestamp"])
         asks = []
-        for ask in orderbook.sells:
-            asks.append((Decimal(ask.price) * price_scale, Decimal(ask.quantity) * size_scale))
-            last_update_timestamp_ms = max(last_update_timestamp_ms, ask.timestamp)
+        for ask in orderbook["sells"]:
+            asks.append((Decimal(ask["price"]) * price_scale, Decimal(ask["quantity"]) * size_scale))
+            last_update_timestamp_ms = max(last_update_timestamp_ms, ask["timestamp"])
         snapshot_msg = OrderBookMessage(
             message_type=OrderBookMessageType.SNAPSHOT,
             content={
@@ -455,48 +457,48 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 await self._update_account_address_and_create_order_hash_manager()
         self._check_markets_initialized() or await self._update_markets()
 
-        portfolio_response: AccountPortfolioResponse = await self._client.get_account_portfolio(
-            account_address=self._account_address
-        )
-
-        portfolio: Portfolio = portfolio_response.portfolio
-        bank_balances: List[Coin] = portfolio.bank_balances
-        sub_account_balances: List[SubaccountBalanceV2] = portfolio.subaccounts
+        # portfolio_response: AccountPortfolioResponse = await self._client.get_account_portfolio(
+        #     account_address=self._account_address
+        # )
+        #
+        # portfolio: Portfolio = portfolio_response.portfolio
+        # bank_balances: List[Coin] = portfolio.bank_balances
+        # sub_account_balances: List[SubaccountBalanceV2] = portfolio.subaccounts
 
         balances_dict: Dict[str, Dict[str, Decimal]] = {}
 
-        if self._is_default_subaccount:
-            for bank_entry in bank_balances:
-                denom_meta = self._denom_to_token_meta.get(bank_entry.denom)
-                if denom_meta is not None:
-                    asset_name: str = denom_meta.symbol
-                    denom_scaler: Decimal = Decimal(f"1e-{denom_meta.decimals}")
-
-                    available_balance: Decimal = Decimal(bank_entry.amount) * denom_scaler
-                    total_balance: Decimal = available_balance
-                    balances_dict[asset_name] = {
-                        "total_balance": total_balance,
-                        "available_balance": available_balance,
-                    }
-
-        for entry in sub_account_balances:
-            if entry.subaccount_id.casefold() != self._sub_account_id.casefold():
-                continue
-
-            denom_meta = self._denom_to_token_meta.get(entry.denom)
-            if denom_meta is not None:
-                asset_name: str = denom_meta.symbol
-                denom_scaler: Decimal = Decimal(f"1e-{denom_meta.decimals}")
-
-                total_balance: Decimal = Decimal(entry.deposit.total_balance) * denom_scaler
-                available_balance: Decimal = Decimal(entry.deposit.available_balance) * denom_scaler
-
-                balance_element = balances_dict.get(
-                    asset_name, {"total_balance": Decimal("0"), "available_balance": Decimal("0")}
-                )
-                balance_element["total_balance"] += total_balance
-                balance_element["available_balance"] += available_balance
-                balances_dict[asset_name] = balance_element
+        # if self._is_default_subaccount:
+        #     for bank_entry in bank_balances:
+        #         denom_meta = self._denom_to_token_meta.get(bank_entry.denom)
+        #         if denom_meta is not None:
+        #             asset_name: str = denom_meta.symbol
+        #             denom_scaler: Decimal = Decimal(f"""1e-{denom_meta["decimals"]}""")
+        #
+        #             available_balance: Decimal = Decimal(bank_entry.amount) * denom_scaler
+        #             total_balance: Decimal = available_balance
+        #             balances_dict[asset_name] = {
+        #                 "total_balance": total_balance,
+        #                 "available_balance": available_balance,
+        #             }
+        #
+        # for entry in sub_account_balances:
+        #     if entry.subaccount_id.casefold() != self._sub_account_id.casefold():
+        #         continue
+        #
+        #     denom_meta = self._denom_to_token_meta.get(entry.denom)
+        #     if denom_meta is not None:
+        #         asset_name: str = denom_meta.symbol
+        #         denom_scaler: Decimal = Decimal(f"""1e-{denom_meta["decimals"]}""")
+        #
+        #         total_balance: Decimal = Decimal(entry.deposit.total_balance) * denom_scaler
+        #         available_balance: Decimal = Decimal(entry.deposit.available_balance) * denom_scaler
+        #
+        #         balance_element = balances_dict.get(
+        #             asset_name, {"total_balance": Decimal("0"), "available_balance": Decimal("0")}
+        #         )
+        #         balance_element["total_balance"] += total_balance
+        #         balance_element["available_balance"] += available_balance
+        #         balances_dict[asset_name] = balance_element
 
         self._update_local_balances(balances=balances_dict)
         return balances_dict
@@ -816,11 +818,11 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         price_scale = self._get_backend_price_scaler(market=market)
         size_scale = self._get_backend_denom_scaler(denom_meta=market["baseToken"])
         bids = [
-            (Decimal(bid.price) * price_scale, Decimal(bid.quantity) * size_scale)
+            (Decimal(bid["price"]) * price_scale, Decimal(bid["quantity"]) * size_scale)
             for bid in order_book_update.orderbook.buys
         ]
         asks = [
-            (Decimal(ask.price) * price_scale, Decimal(ask.quantity) * size_scale)
+            (Decimal(ask["price"]) * price_scale, Decimal(ask["quantity"]) * size_scale)
             for ask in order_book_update.orderbook.sells
         ]
         snapshot_msg = OrderBookMessage(
@@ -837,7 +839,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     def _parse_bank_balance_message(self, message: StreamAccountPortfolioResponse) -> BalanceUpdateEvent:
         denom_meta: TokenMeta = self._denom_to_token_meta[message.denom]
-        denom_scaler: Decimal = Decimal(f"1e-{denom_meta.decimals}")
+        denom_scaler: Decimal = Decimal(f"""1e-{denom_meta["decimals"]}""")
 
         available_balance: Decimal = Decimal(message.amount) * denom_scaler
         total_balance: Decimal = available_balance
@@ -1079,7 +1081,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     @staticmethod
     def _get_backend_price_scaler(market: SpotMarketInfo) -> Decimal:
-        scale = Decimal(f"""1e{market["baseToken"].decimals - market["quoteToken"].decimals}""")
+        scale = Decimal(f"""1e{market["baseToken"]["decimals"] - market["quoteToken"]["decimals"]}""")
         return scale
 
     def _convert_quote_from_backend(self, quote_amount: str, market: SpotMarketInfo) -> Decimal:
@@ -1089,13 +1091,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     def _convert_size_from_backend(self, size: str, market: SpotMarketInfo) -> Decimal:
         scale = self._get_backend_denom_scaler(denom_meta=market["baseToken"])
-        size_tick_size = Decimal(market.min_quantity_tick_size) * scale
+        size_tick_size = Decimal(market["minimumOrderSize"]) * scale
         scaled_size = Decimal(size) * scale
         return self._floor_to(scaled_size, size_tick_size)
 
     @staticmethod
     def _get_backend_denom_scaler(denom_meta: TokenMeta):
-        scale = Decimal(f"1e{-denom_meta.decimals}")
+        scale = Decimal(f"""1e{-denom_meta["decimals"]}""")
         return scale
 
     @staticmethod
