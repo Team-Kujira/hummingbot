@@ -9,9 +9,9 @@ from .kujira_constants import ACC_NONCE_PATH_RATE_LIMIT_ID, NONCE_PATH, RATE_LIM
 from .kujira_types import (
     Denom,
     DerivativeOrder,
+    InjectiveComposer,
     Network,
     OrderHashResponse,
-    ProtoMsgComposer,
     SpotOrder,
     build_eip712_msg,
     derivative_price_to_backend,
@@ -19,6 +19,10 @@ from .kujira_types import (
     exchange_pb2,
     hash_order,
 )
+
+##########################
+# Injective related helpers:
+##########################
 
 
 class OrderHashManager:
@@ -57,7 +61,7 @@ class OrderHashManager:
         return order_hashes
 
 
-class Composer(ProtoMsgComposer):
+class Composer(InjectiveComposer):
     def DerivativeOrder(
         self,
         market_id: str,

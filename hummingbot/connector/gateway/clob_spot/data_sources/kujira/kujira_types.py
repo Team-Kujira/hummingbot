@@ -1,12 +1,18 @@
 from enum import Enum
 
 from pyinjective.async_client import AsyncClient
-from pyinjective.composer import Composer as ProtoMsgComposer
+from pyinjective.composer import Composer as InjectiveComposer
 from pyinjective.constant import Denom, Network
 from pyinjective.orderhash import OrderHashResponse, build_eip712_msg, hash_order
 from pyinjective.proto.exchange.injective_accounts_rpc_pb2 import StreamSubaccountBalanceResponse, SubaccountBalance
 from pyinjective.proto.exchange.injective_explorer_rpc_pb2 import GetTxByTxHashResponse, StreamTxsResponse
-from pyinjective.proto.exchange.injective_portfolio_rpc_pb2 import StreamAccountPortfolioResponse
+from pyinjective.proto.exchange.injective_portfolio_rpc_pb2 import (
+    AccountPortfolioResponse,
+    Coin,
+    Portfolio,
+    StreamAccountPortfolioResponse,
+    SubaccountBalanceV2,
+)
 from pyinjective.proto.exchange.injective_spot_exchange_rpc_pb2 import (
     MarketsResponse,
     SpotMarketInfo,
@@ -110,7 +116,7 @@ class TickerSource(Enum):
 
 
 AsyncClient = AsyncClient
-ProtoMsgComposer = ProtoMsgComposer
+InjectiveComposer = InjectiveComposer
 Network = Network
 OrderHashResponse = OrderHashResponse
 build_eip712_msg = build_eip712_msg
@@ -119,7 +125,11 @@ StreamSubaccountBalanceResponse = StreamSubaccountBalanceResponse
 SubaccountBalance = SubaccountBalance
 GetTxByTxHashResponse = GetTxByTxHashResponse
 StreamTxsResponse = StreamTxsResponse
+AccountPortfolioResponse = AccountPortfolioResponse
+Coin = Coin
+Portfolio = Portfolio
 StreamAccountPortfolioResponse = StreamAccountPortfolioResponse
+SubaccountBalanceV2 = SubaccountBalanceV2
 MarketsResponse = MarketsResponse
 SpotMarketInfo = SpotMarketInfo
 SpotOrderHistory = SpotOrderHistory
@@ -139,7 +149,6 @@ derivative_quantity_to_backend = derivative_quantity_to_backend
 
 __all__ = [
     "AsyncClient",
-    "ProtoMsgComposer",
     "Network",
     "OrderHashResponse",
     "build_eip712_msg",
@@ -148,7 +157,11 @@ __all__ = [
     "SubaccountBalance",
     "GetTxByTxHashResponse",
     "StreamTxsResponse",
+    "AccountPortfolioResponse",
+    "Coin",
+    "Portfolio",
     "StreamAccountPortfolioResponse",
+    "SubaccountBalanceV2",
     "MarketsResponse",
     "SpotMarketInfo",
     "SpotOrderHistory",
