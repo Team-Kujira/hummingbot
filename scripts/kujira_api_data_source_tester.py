@@ -22,7 +22,7 @@ class KujiraAPIDataSourceTester(ScriptStrategyBase):
 
             self._can_run: bool = True
             self._is_busy: bool = False
-            self._refresh_timestamp: int
+            self._refresh_timestamp: int = 0
 
             self._configuration = {
                 "markets": {
