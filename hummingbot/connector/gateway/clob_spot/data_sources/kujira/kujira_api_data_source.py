@@ -40,11 +40,11 @@ from hummingbot.core.network_iterator import NetworkStatus
 from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
 from hummingbot.logger import HummingbotLogger
 
-from .kujira_types import (  # AccountPortfolioResponse,; Coin,; Portfolio,; SubaccountBalanceV2,
+from .kujira_helpers import generate_hash
+from .kujira_types import (  # AccountPortfolioResponse,; Coin,; Portfolio,; SubaccountBalanceV2,; SpotOrder,
     GetTxByTxHashResponse,
     MarketsResponse,
     SpotMarketInfo,
-    SpotOrder,
     SpotOrderHistory,
     SpotTrade,
     StreamAccountPortfolioResponse,
@@ -274,12 +274,14 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def place_order(
         self, order: GatewayInFlightOrder, **kwargs
     ) -> Tuple[Optional[str], Dict[str, Any]]:
-        spot_order_to_create = [self._compose_spot_order_for_local_hash_computation(order=order)]
+        # spot_order_to_create = [self._compose_spot_order_for_local_hash_computation(order=order)]
         async with self._order_placement_lock:
-            order_hashes = self._order_hash_manager.compute_order_hashes(
-                spot_orders=spot_order_to_create, derivative_orders=[]
-            )
-            order_hash = order_hashes.spot[0]
+            # order_hashes = self._order_hash_manager.compute_order_hashes(
+            #     spot_orders=spot_order_to_create, derivative_orders=[]
+            # )
+            # order_hash = order_hashes.spot[0]
+
+            order_hash = generate_hash(order)
 
             try:
                 order_result: Dict[str, Any] = await self._get_gateway_instance().clob_place_order(
@@ -320,7 +322,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     async def batch_order_create(self, orders_to_create: List[GatewayInFlightOrder]) -> List[PlaceOrderResult]:
         spot_orders_to_create = [
-            self._compose_spot_order_for_local_hash_computation(order=order)
+            # self._compose_spot_order_for_local_hash_computation(order=order)
+            generate_hash(order)
             for order in orders_to_create
         ]
 
@@ -614,17 +617,17 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         )
         return trading_rule
 
-    def _compose_spot_order_for_local_hash_computation(self, order: GatewayInFlightOrder) -> SpotOrder:
-        market = self._markets_info[order.trading_pair]
-        return self._composer.SpotOrder(
-            market_id=market.market_id,
-            subaccount_id=self._sub_account_id.lower(),
-            fee_recipient=self._account_address,
-            price=float(order.price),
-            quantity=float(order.amount),
-            is_buy=order.trade_type == TradeType.BUY,
-            is_po=order.order_type == OrderType.LIMIT_MAKER,
-        )
+    # def _compose_spot_order_for_local_hash_computation(self, order: GatewayInFlightOrder) -> SpotOrder:
+    #     market = self._markets_info[order.trading_pair]
+    #     return self._composer.SpotOrder(
+    #         market_id=market.market_id,
+    #         subaccount_id=self._sub_account_id.lower(),
+    #         fee_recipient=self._account_address,
+    #         price=float(order.price),
+    #         quantity=float(order.amount),
+    #         is_buy=order.trade_type == TradeType.BUY,
+    #         is_po=order.order_type == OrderType.LIMIT_MAKER,
+    #     )
 
     async def get_trading_fees(self) -> Mapping[str, MakerTakerExchangeFeeRates]:
         self._check_markets_initialized() or await self._update_markets()

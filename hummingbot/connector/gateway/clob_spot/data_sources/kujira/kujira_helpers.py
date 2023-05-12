@@ -23,6 +23,14 @@ from .kujira_types import (
     hash_order,
 )
 
+
+def generate_hash(obj):
+    obj_serialized = jsonpickle.encode(obj, unpicklable=True)
+    hasher = hashlib.md5()
+    hasher.update(obj_serialized)
+
+    return hasher.hexdigest()
+
 ##########################
 # Injective related helpers:
 ##########################
@@ -148,10 +156,3 @@ def derivative_margin_to_backend_using_gateway_approach(
     res = int(numerator / denominator)
 
     return res
-
-
-def generate_hash(obj):
-    obj_serialized = jsonpickle.encode(obj, unpicklable=True)
-    hasher = hashlib.md5()
-    hasher.update(obj_serialized)
-    return hasher.hexdigest()
