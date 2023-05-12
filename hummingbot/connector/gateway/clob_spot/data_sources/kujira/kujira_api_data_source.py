@@ -280,7 +280,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             # )
             # order_hash = order_hashes.spot[0]
 
-            order_hash = generate_hash(order)
+            # order_hash = generate_hash(order)
 
             try:
                 order_result: Dict[str, Any] = await self._get_gateway_instance().clob_place_order(
@@ -295,13 +295,14 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     size=order.amount,
                 )
                 transaction_hash: Optional[str] = order_result.get("txHash")
+                order_id = order_result.get("id")
             except Exception:
                 await self._update_account_address_and_create_order_hash_manager()
                 raise
 
             self.logger().debug(
                 # f"Placed order {order_hash} with nonce {self._order_hash_manager.current_nonce - 1}"
-                f"Placed order {order_hash}"
+                f"Placed order {order_id}"
                 f" and tx hash {transaction_hash}."
             )
 
@@ -318,7 +319,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "creation_transaction_hash": transaction_hash,
         }
 
-        return order_hash, misc_updates
+        return order_id, misc_updates
 
     async def batch_order_create(self, orders_to_create: List[GatewayInFlightOrder]) -> List[PlaceOrderResult]:
         spot_orders_to_create = [
