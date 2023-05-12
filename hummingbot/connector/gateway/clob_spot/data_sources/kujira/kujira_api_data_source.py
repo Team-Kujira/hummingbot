@@ -301,7 +301,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 raise
 
             self.logger().debug(
-                f"Placed order {order_hash} with nonce {self._order_hash_manager.current_nonce - 1}"
+                # f"Placed order {order_hash} with nonce {self._order_hash_manager.current_nonce - 1}"
+                f"Placed order {order_hash}"
                 f" and tx hash {transaction_hash}."
             )
 
