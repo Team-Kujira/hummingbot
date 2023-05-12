@@ -10,6 +10,8 @@ KUJIRA_NATIVE_TOKEN = {
     "name": "Kuji",
 }
 
+CONNECTOR = "kujira"
+
 ##########################
 # Injective related constants:
 ##########################
