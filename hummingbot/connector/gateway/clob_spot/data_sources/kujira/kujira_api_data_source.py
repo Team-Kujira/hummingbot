@@ -8,8 +8,6 @@ from enum import Enum
 from math import floor
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-from grpc.aio import UnaryStreamCall
-
 from hummingbot.client.config.config_helpers import ClientConfigAdapter
 from hummingbot.connector.gateway.clob_spot.data_sources.clob_api_data_source_base import CLOBAPIDataSourceBase
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_constants import (
@@ -44,6 +42,7 @@ from .kujira_helpers import generate_hash
 from .kujira_types import (  # AccountPortfolioResponse,; Coin,; Portfolio,; SubaccountBalanceV2,; SpotOrder,
     GetTxByTxHashResponse,
     MarketsResponse,
+    OrderStatus,
     SpotMarketInfo,
     SpotOrderHistory,
     SpotTrade,
@@ -218,7 +217,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             trading_pair=trading_pair,
             client_order_id=in_flight_order.client_order_id,
             order_hash=order_hash,
-            market_id=market.market_id,
+            market_id=market["id"],
             direction=direction,
             creation_timestamp=in_flight_order.creation_timestamp,
             order_type=in_flight_order.order_type,
@@ -448,9 +447,17 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     async def get_last_traded_price(self, trading_pair: str) -> Decimal:
         market = self._markets_info[trading_pair]
-        trades = await self._client.get_spot_trades(market_id=market.market_id)
-        if len(trades.trades) != 0:
-            price = self._convert_price_from_backend(price=trades.trades[0].price.price, market=market)
+        # trades = await self._client.get_spot_trades(market_id=market["id"])
+        trades = await self._get_gateway_instance().kujira_get_orders({
+            "chain": self._chain,
+            "network": self._network,
+            "connector": self._connector_name,
+            "ownerAddress": self._sub_account_id,
+            "marketId": market["id"],
+            "status": OrderStatus.FILLED.value[0],
+        })
+        if len(trades.values()) != 0:
+            price = self._convert_price_from_backend(price=trades.values()[0]["price"], market=market)
         else:
             price = Decimal("NaN")
         return price
@@ -519,7 +526,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         exchange_order_id = await in_flight_order.get_exchange_order_id()
         direction = "buy" if in_flight_order.trade_type == TradeType.BUY else "sell"
         trades = await self._get_all_trades(
-            market_id=market.market_id,
+            market_id=market["id"],
             direction=direction,
             created_at=int(in_flight_order.creation_timestamp * 1e3),
             updated_at=int(in_flight_order.last_update_timestamp * 1e3)
@@ -743,19 +750,19 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._transactions_stream_listener and self._transactions_stream_listener.cancel()
         self._transactions_stream_listener = None
 
-    async def _listen_to_trades_stream(self):
-        while True:
-            market_ids: List[str] = self._get_market_ids()
-            stream: UnaryStreamCall = await self._client.stream_spot_trades(market_ids=market_ids)
-            try:
-                async for trade_msg in stream:
-                    self._process_trade_stream_event(message=trade_msg)
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                self.logger().exception("Unexpected error in public trade listener loop.")
-            self.logger().info("Restarting public trades stream.")
-            stream.cancel()
+    # async def _listen_to_trades_stream(self):
+    #     while True:
+    #         market_ids: List[str] = self._get_market_ids()
+    #         stream: UnaryStreamCall = await self._client.stream_spot_trades(market_ids=market_ids)
+    #         try:
+    #             async for trade_msg in stream:
+    #                 self._process_trade_stream_event(message=trade_msg)
+    #         except asyncio.CancelledError:
+    #             raise
+    #         except Exception:
+    #             self.logger().exception("Unexpected error in public trade listener loop.")
+    #         self.logger().info("Restarting public trades stream.")
+    #         stream.cancel()
 
     def _process_trade_stream_event(self, message: StreamTradesResponse):
         trade_message: SpotTrade = message.trade
@@ -769,18 +776,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._publisher.trigger_event(event_tag=OrderBookDataSourceEvent.TRADE_EVENT, message=trade_ob_msg)
         self._publisher.trigger_event(event_tag=MarketEvent.TradeUpdate, message=trade_update)
 
-    async def _listen_to_orders_stream(self, market_id: str):
-        while True:
-            stream: UnaryStreamCall = await self._client.stream_historical_spot_orders(market_id=market_id)
-            try:
-                async for order in stream:
-                    self._parse_order_stream_update(order=order)
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                self.logger().exception("Unexpected error in user stream listener loop.")
-            self.logger().info("Restarting orders stream.")
-            stream.cancel()
+    # async def _listen_to_orders_stream(self, market_id: str):
+    #     while True:
+    #         stream: UnaryStreamCall = await self._client.stream_historical_spot_orders(market_id=market_id)
+    #         try:
+    #             async for order in stream:
+    #                 self._parse_order_stream_update(order=order)
+    #         except asyncio.CancelledError:
+    #             raise
+    #         except Exception:
+    #             self.logger().exception("Unexpected error in user stream listener loop.")
+    #         self.logger().info("Restarting orders stream.")
+    #         stream.cancel()
 
     def _parse_order_stream_update(self, order: StreamOrdersResponse):
         order_hash = order.order.order_hash
@@ -806,19 +813,19 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=open_update)
             self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=order_update)
 
-    async def _listen_to_order_books_stream(self):
-        while True:
-            market_ids = self._get_market_ids()
-            stream: UnaryStreamCall = await self._client.stream_spot_orderbook_snapshot(market_ids=market_ids)
-            try:
-                async for order_book_update in stream:
-                    self._parse_order_book_event(order_book_update=order_book_update)
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                self.logger().exception("Unexpected error in user stream listener loop.")
-            self.logger().info("Restarting order books stream.")
-            stream.cancel()
+    # async def _listen_to_order_books_stream(self):
+    #     while True:
+    #         market_ids = self._get_market_ids()
+    #         stream: UnaryStreamCall = await self._client.stream_spot_orderbook_snapshot(market_ids=market_ids)
+    #         try:
+    #             async for order_book_update in stream:
+    #                 self._parse_order_book_event(order_book_update=order_book_update)
+    #         except asyncio.CancelledError:
+    #             raise
+    #         except Exception:
+    #             self.logger().exception("Unexpected error in user stream listener loop.")
+    #         self.logger().info("Restarting order books stream.")
+    #         stream.cancel()
 
     def _parse_order_book_event(self, order_book_update: StreamOrderbookResponse):
         udpate_timestamp_ms = order_book_update.timestamp
@@ -865,39 +872,39 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         )
         return balance_msg
 
-    async def _listen_to_bank_balances_streams(self):
-        while True:
-            stream: UnaryStreamCall = await self._client.stream_account_portfolio(
-                account_address=self._account_address, type="bank"
-            )
-            try:
-                async for bank_balance in stream:
-                    self._process_bank_balance_stream_event(message=bank_balance)
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                self.logger().exception("Unexpected error in account balance listener loop.")
-            self.logger().info("Restarting account balances stream.")
-            stream.cancel()
+    # async def _listen_to_bank_balances_streams(self):
+    #     while True:
+    #         stream: UnaryStreamCall = await self._client.stream_account_portfolio(
+    #             account_address=self._account_address, type="bank"
+    #         )
+    #         try:
+    #             async for bank_balance in stream:
+    #                 self._process_bank_balance_stream_event(message=bank_balance)
+    #         except asyncio.CancelledError:
+    #             raise
+    #         except Exception:
+    #             self.logger().exception("Unexpected error in account balance listener loop.")
+    #         self.logger().info("Restarting account balances stream.")
+    #         stream.cancel()
 
     def _process_bank_balance_stream_event(self, message: StreamAccountPortfolioResponse):
         denom_meta = self._denom_to_token_meta[message.denom]
         symbol = denom_meta.symbol
         safe_ensure_future(self._issue_balance_update(token=symbol))
 
-    async def _listen_to_subaccount_balances_stream(self):
-        while True:
-            # Uses InjectiveAccountsRPC since it provides both total_balance and available_balance in a single stream.
-            stream: UnaryStreamCall = await self._client.stream_subaccount_balance(subaccount_id=self._sub_account_id)
-            try:
-                async for balance_msg in stream:
-                    self._process_subaccount_balance_stream_event(message=balance_msg)
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                self.logger().exception("Unexpected error in account balance listener loop.")
-            self.logger().info("Restarting account balances stream.")
-            stream.cancel()
+    # async def _listen_to_subaccount_balances_stream(self):
+    #     while True:
+    #         # Uses InjectiveAccountsRPC since it provides both total_balance and available_balance in a single stream.
+    #         stream: UnaryStreamCall = await self._client.stream_subaccount_balance(subaccount_id=self._sub_account_id)
+    #         try:
+    #             async for balance_msg in stream:
+    #                 self._process_subaccount_balance_stream_event(message=balance_msg)
+    #         except asyncio.CancelledError:
+    #             raise
+    #         except Exception:
+    #             self.logger().exception("Unexpected error in account balance listener loop.")
+    #         self.logger().info("Restarting account balances stream.")
+    #         stream.cancel()
 
     def _process_subaccount_balance_stream_event(self, message: StreamSubaccountBalanceResponse):
         denom_meta = self._denom_to_token_meta[message.balance.denom]
@@ -931,20 +938,29 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         search_completed = False
 
         while not search_completed:
-            response = await self._client.get_historical_spot_orders(
-                market_id=market_id,
-                subaccount_id=self._sub_account_id,
-                direction=direction,
-                start_time=start_time,
-                skip=skip,
-                order_types=[CLIENT_TO_BACKEND_ORDER_TYPES_MAP[(trade_type, order_type)]]
-            )
-            if len(response.orders) == 0:
+            # response = await self._client.get_historical_spot_orders(
+            #     market_id=market_id,
+            #     subaccount_id=self._sub_account_id,
+            #     direction=direction,
+            #     start_time=start_time,
+            #     skip=skip,
+            #     order_types=[CLIENT_TO_BACKEND_ORDER_TYPES_MAP[(trade_type, order_type)]]
+            # )
+
+            response = await self._get_gateway_instance().kujira_get_orders({
+                "chain": self._chain,
+                "network": self._network,
+                "connector": self._connector_name,
+                "ownerAddress": self._sub_account_id,
+                "marketId": self._market_id_to_active_spot_markets[market_id]["id"],
+                "status": OrderStatus.FILLED.value[0],
+            })
+            if len(response.values()) == 0:
                 search_completed = True
             else:
                 skip += REQUESTS_SKIP_STEP
-                for response_order in response.orders:
-                    if response_order.order_hash == order_hash:
+                for response_order in response.values():
+                    if response_order["id"] == order_hash:
                         order_status = response_order
                         search_completed = True
                         break
@@ -963,18 +979,26 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         search_completed = False
 
         while not search_completed:
-            trades = await self._client.get_spot_trades(
-                market_id=market_id,
-                subaccount_id=self._sub_account_id,
-                direction=direction,
-                skip=skip,
-                start_time=created_at,
-            )
-            if len(trades.trades) == 0:
+            trades = await self._get_gateway_instance().kujira_get_orders({
+                "chain": self._chain,
+                "network": self._network,
+                "connector": self._connector_name,
+                "ownerAddress": self._sub_account_id,
+                "marketId": self._market_id_to_active_spot_markets[market_id]["id"],
+                "status": OrderStatus.FILLED.value[0],
+            })
+            # trades = await self._client.get_spot_trades(
+            #     market_id=market_id,
+            #     subaccount_id=self._sub_account_id,
+            #     direction=direction,
+            #     skip=skip,
+            #     start_time=created_at,
+            # )
+            if len(trades.values()) == 0:
                 search_completed = True
             else:
-                all_trades.extend(trades.trades)
-                skip += len(trades.trades)
+                all_trades.extend(trades.values())
+                skip += len(trades.values())
 
         return all_trades
 
@@ -1026,18 +1050,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         )
         return trade_ob_msg, trade_update
 
-    async def _listen_to_transactions_stream(self):
-        while True:
-            stream: UnaryStreamCall = await self._client.stream_txs()
-            try:
-                async for transaction in stream:
-                    await self._parse_transaction_event(transaction=transaction)
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                self.logger().exception("Unexpected error in user stream listener loop.")
-            self.logger().info("Restarting transactions stream.")
-            stream.cancel()
+    # async def _listen_to_transactions_stream(self):
+    #     while True:
+    #         stream: UnaryStreamCall = await self._client.stream_txs()
+    #         try:
+    #             async for transaction in stream:
+    #                 await self._parse_transaction_event(transaction=transaction)
+    #         except asyncio.CancelledError:
+    #             raise
+    #         except Exception:
+    #             self.logger().exception("Unexpected error in user stream listener loop.")
+    #         self.logger().info("Restarting transactions stream.")
+    #         stream.cancel()
 
     async def _parse_transaction_event(self, transaction: StreamTxsResponse):
         order = self._gateway_order_tracker.get_fillable_order_by_hash(transaction_hash=transaction.hash)
@@ -1075,7 +1099,14 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return scaled_price
 
     async def _get_transaction_by_hash(self, transaction_hash: str) -> GetTxByTxHashResponse:
-        return await self._client.get_tx_by_hash(tx_hash=transaction_hash)
+        # return await self._client.get_tx_by_hash(tx_hash=transaction_hash)
+
+        return await self._get_gateway_instance().kujira_get_transaction({
+            "chain": self._chain,
+            "network": self._network,
+            "connector": self._connector_name,
+            "hash": transaction_hash.replace("0x", ""),
+        })
 
     def _get_market_ids(self) -> List[str]:
         market_ids = [
