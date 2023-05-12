@@ -1,6 +1,9 @@
+import hashlib
 import logging
 from decimal import Decimal
 from typing import List
+
+import jsonpickle
 
 from hummingbot.core.api_throttler.async_throttler import AsyncThrottler
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
@@ -145,3 +148,10 @@ def derivative_margin_to_backend_using_gateway_approach(
     res = int(numerator / denominator)
 
     return res
+
+
+def generate_hash(obj):
+    obj_serialized = jsonpickle.encode(obj, unpicklable=True)
+    hasher = hashlib.md5()
+    hasher.update(obj_serialized)
+    return hasher.hexdigest()
