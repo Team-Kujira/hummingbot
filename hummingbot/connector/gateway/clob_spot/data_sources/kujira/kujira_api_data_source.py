@@ -16,7 +16,6 @@ from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_constants
     BACKEND_TO_CLIENT_ORDER_STATE_MAP,
     CLIENT_TO_BACKEND_ORDER_TYPES_MAP,
     CONNECTOR_NAME,
-    DEFAULT_SUB_ACCOUNT_SUFFIX,
     LOST_ORDER_COUNT_LIMIT,
     MARKETS_UPDATE_INTERVAL,
     MSG_BATCH_UPDATE_ORDERS,
@@ -134,7 +133,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     @property
     def _is_default_subaccount(self):
-        return self._sub_account_id[-24:] == DEFAULT_SUB_ACCOUNT_SUFFIX
+        # return self._sub_account_id[-24:] == DEFAULT_SUB_ACCOUNT_SUFFIX
+        return True
 
     async def start(self):
         """Starts the event streaming."""
@@ -467,20 +467,26 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         balances_dict: Dict[str, Dict[str, Decimal]] = {}
 
-        # if self._is_default_subaccount:
-        #     for bank_entry in bank_balances:
-        #         denom_meta = self._denom_to_token_meta.get(bank_entry.denom)
-        #         if denom_meta is not None:
-        #             asset_name: str = denom_meta.symbol
-        #             denom_scaler: Decimal = Decimal(f"""1e-{denom_meta["decimals"]}""")
-        #
-        #             available_balance: Decimal = Decimal(bank_entry.amount) * denom_scaler
-        #             total_balance: Decimal = available_balance
-        #             balances_dict[asset_name] = {
-        #                 "total_balance": total_balance,
-        #                 "available_balance": available_balance,
-        #             }
-        #
+        bank_balances = (await self._get_gateway_instance().clob_kujira_balances(
+            chain=self._chain,
+            network=self._network,
+            address=self._account_address,
+        ))["balances"]
+
+        if self._is_default_subaccount:
+            for bank_entry in bank_balances:
+                denom_meta = self._denom_to_token_meta.get(bank_entry["token"])
+                if denom_meta is not None:
+                    asset_name: str = denom_meta["symbol"]
+                    denom_scaler: Decimal = Decimal(f"""1e-{denom_meta["decimals"]}""")
+
+                    available_balance: Decimal = Decimal(bank_entry["amount"]) * denom_scaler
+                    total_balance: Decimal = available_balance
+                    balances_dict[asset_name] = {
+                        "total_balance": total_balance,
+                        "available_balance": available_balance,
+                    }
+
         # for entry in sub_account_balances:
         #     if entry.subaccount_id.casefold() != self._sub_account_id.casefold():
         #         continue
