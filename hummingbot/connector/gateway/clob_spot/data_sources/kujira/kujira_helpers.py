@@ -25,7 +25,7 @@ from .kujira_types import (
 
 
 def generate_hash(obj):
-    obj_serialized = jsonpickle.encode(obj, unpicklable=True)
+    obj_serialized = jsonpickle.encode(obj, unpicklable=True).encode("utf-8")
     hasher = hashlib.md5()
     hasher.update(obj_serialized)
 
