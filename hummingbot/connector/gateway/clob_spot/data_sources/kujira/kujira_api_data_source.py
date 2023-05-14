@@ -490,9 +490,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 denom_meta = self._denom_to_token_meta.get(bank_entry["token"])
                 if denom_meta is not None:
                     asset_name: str = denom_meta["symbol"]
-                    denom_scaler: Decimal = Decimal(f"""1e-{denom_meta["decimals"]}""")
+                    # denom_scaler: Decimal = Decimal(f"""1e-{denom_meta["decimals"]}""")
 
-                    available_balance: Decimal = Decimal(bank_entry["amount"]) * denom_scaler
+                    # available_balance: Decimal = Decimal(bank_entry["amount"]) * denom_scaler
+                    available_balance: Decimal = Decimal(bank_entry["amount"])
                     total_balance: Decimal = available_balance
                     balances_dict[asset_name] = {
                         "total_balance": total_balance,
