@@ -1,14 +1,18 @@
 from decimal import Decimal
 from typing import Dict, Tuple
 
+from dotmap import DotMap
+
 from hummingbot.core.api_throttler.data_types import RateLimit
 from hummingbot.core.data_type.common import OrderType, TradeType
 from hummingbot.core.data_type.in_flight_order import OrderState
 
-KUJIRA_NATIVE_TOKEN = {
+KUJIRA_NATIVE_TOKEN = DotMap({
     "id": "ukuji",
     "name": "Kuji",
-}
+    "symbol": "KUJI",
+    "decimals": "6",
+}, _dynamic=False)
 
 CONNECTOR = "kujira"
 
