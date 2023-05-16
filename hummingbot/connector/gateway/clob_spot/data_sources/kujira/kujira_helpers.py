@@ -1,7 +1,8 @@
 import hashlib
 import logging
+from datetime import datetime
 from decimal import Decimal
-from typing import List
+from typing import Any, List
 
 import jsonpickle
 
@@ -24,12 +25,24 @@ from .kujira_types import (
 )
 
 
-def generate_hash(obj):
-    obj_serialized = jsonpickle.encode(obj, unpicklable=True).encode("utf-8")
-    hasher = hashlib.md5()
-    hasher.update(obj_serialized)
+def generate_hash(input: Any) -> str:
+    return generate_hashes([input])[0]
 
-    return hasher.hexdigest()
+
+def generate_hashes(inputs: List[Any]) -> List[str]:
+    hashes = []
+    salt = datetime.now()
+
+    for input in inputs:
+        serialized = jsonpickle.encode(input, unpicklable=True).encode("utf-8")
+        hasher = hashlib.md5()
+        target = f"{salt}{serialized}"
+        hasher.update(target)
+        hash = hasher.hexdigest()
+
+        hashes.append(hash)
+
+    return hashes
 
 ##########################
 # Injective related helpers:

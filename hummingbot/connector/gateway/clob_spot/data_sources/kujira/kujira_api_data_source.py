@@ -1163,3 +1163,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     def _get_gateway_instance(self) -> GatewayHttpClient:
         gateway_instance = GatewayHttpClient.get_instance(self._client_config)
         return gateway_instance
+
+    @property
+    def is_cancel_request_in_exchange_synchronous(self) -> bool:
+        return True

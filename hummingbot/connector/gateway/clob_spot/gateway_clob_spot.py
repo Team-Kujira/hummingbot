@@ -121,7 +121,10 @@ class GatewayCLOBSPOT(ExchangePyBase):
 
     @property
     def is_cancel_request_in_exchange_synchronous(self) -> bool:
-        return False
+        if hasattr(self._api_data_source, 'is_cancel_request_in_exchange_synchronous'):
+            return self._api_data_source.is_cancel_request_in_exchange_synchronous
+        else:
+            return False
 
     @property
     def is_trading_required(self) -> bool:

@@ -49,6 +49,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         }, _dynamic=False)
         self._locks = DotMap({
             "place_order": asyncio.Lock(),
+            "place_orders": asyncio.Lock(),
         }, _dynamic=False)
 
         self._gateway = GatewayHttpClient.get_instance(self._client_config)
@@ -125,7 +126,74 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return placed_order.client_id, misc_updates
 
     async def batch_order_create(self, orders_to_create: List[InFlightOrder]) -> List[PlaceOrderResult]:
-        pass
+        orders = []
+        clients_ids = []
+        for order_to_create in orders_to_create:
+            order_to_create.client_id = generate_hash(order_to_create)
+            clients_ids.append(order_to_create.client_id)
+
+            order = {
+                "clientId": order_to_create.client_id,
+                "marketId": self._market.id,
+                "marketName": self._market.name,
+                "ownerAddress": self._owner_address,
+                "side": KujiraOrderSide.from_hummingbot(order_to_create.trade_type).value[0],
+                "price": str(order_to_create.price),
+                "amount": str(order_to_create.amount),
+                "type": KujiraOrderType.from_hummingbot(order_to_create.order_type).value[0],
+                "payerAddress": self._payer_address,
+                "replaceIfExists": True,
+                "waitUntilIncludedInBlock": True
+            }
+
+            orders.append(order)
+
+        async with self._locks.place_orders:
+            try:
+                response = await self._gateway.kujira_post_orders({
+                    "chain": self._chain,
+                    "network": self._network,
+                    "connector": self._connector,
+                    "orders": orders
+                })
+
+                placed_orders = DotMap(response.values(), _dynamic=False)
+
+                ids = [order["id"] for order in orders]
+
+                hashes = set([order["hashes"]["creation"] for order in placed_orders])
+
+                self.logger().debug(
+                    f"""Orders "{clients_ids}" successfully placed. Exchange id: {ids}. Transaction hash(es): {hashes}"""
+                )
+            except Exception as exception:
+                self.logger().debug(
+                    f"""Orders "{clients_ids}" failed."""
+                )
+
+                raise exception
+
+            transaction_hash = "".join(hashes)
+
+            if transaction_hash in (None, ""):
+                raise Exception(
+                    f"""Orders "{clients_ids}" failed. Invalid transaction hash: "{transaction_hash}"."""
+                )
+
+        place_order_results = [
+            # PlaceOrderResult(
+            #     update_timestamp=time.time(),
+            #     client_order_id=order.client_order_id,
+            #     exchange_order_id=order_hash,
+            #     trading_pair=order.trading_pair,
+            #     misc_updates={
+            #         "creation_transaction_hash": transaction_hash,
+            #     },
+            #     exception=exception,
+            # ) for order, order_hash in zip(orders_to_create, order_hashes.spot)
+        ]
+
+        return place_order_results
 
     async def cancel_order(self, order: GatewayInFlightOrder) -> Tuple[bool, Optional[Dict[str, Any]]]:
         pass
@@ -156,6 +224,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     async def check_network_status(self) -> NetworkStatus:
         pass
+
+    @property
+    def is_cancel_request_in_exchange_synchronous(self) -> bool:
+        return True
 
     def _check_markets_initialized(self) -> bool:
         pass
