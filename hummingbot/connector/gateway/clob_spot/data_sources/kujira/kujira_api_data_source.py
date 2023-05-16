@@ -454,7 +454,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "network": self._network,
             "connector": self._connector_name,
             "ownerAddress": self._sub_account_id,
-            "marketId": market["id"],
+            "market": market["id"],
             "status": OrderStatus.FILLED.value[0],
         })
         if len(trades.values()) != 0:
