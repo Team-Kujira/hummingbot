@@ -12,16 +12,17 @@ from hummingbot.connector.gateway.common_types import CancelOrderResult, PlaceOr
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.trading_rule import TradingRule
 from hummingbot.core.data_type.common import OrderType
-from hummingbot.core.data_type.in_flight_order import InFlightOrder, OrderUpdate, TradeUpdate
+from hummingbot.core.data_type.in_flight_order import OrderUpdate, TradeUpdate
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
-from hummingbot.core.data_type.trade_fee import MakerTakerExchangeFeeRates
+from hummingbot.core.data_type.trade_fee import MakerTakerExchangeFeeRates, TokenAmount, TradeFeeBase, TradeFeeSchema
+from hummingbot.core.event.events import AccountEvent, MarketEvent, OrderBookDataSourceEvent
 from hummingbot.core.gateway.gateway_http_client import GatewayHttpClient
 from hummingbot.core.network_iterator import NetworkStatus
-from hummingbot.core.utils.async_utils import safe_gather
+from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
 
-from .kujira_constants import CONNECTOR, KUJIRA_NATIVE_TOKEN
+from .kujira_constants import CONNECTOR, KUJIRA_NATIVE_TOKEN, MARKETS_UPDATE_INTERVAL
 from .kujira_helpers import generate_hash
-from .kujira_types import OrderSide as KujiraOrderSide, OrderType as KujiraOrderType
+from .kujira_types import OrderSide as KujiraOrderSide, OrderStatus as KujiraOrderStatus, OrderType as KujiraOrderType
 
 
 class KujiraAPIDataSource(CLOBAPIDataSourceBase):
@@ -47,8 +48,9 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._market = DotMap({}, _dynamic=False)
 
         self._tasks = DotMap({
-            "get_markets"
+            "update_markets"
         }, _dynamic=False)
+
         self._locks = DotMap({
             "place_order": asyncio.Lock(),
             "place_orders": asyncio.Lock(),
@@ -70,16 +72,26 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     @staticmethod
     def supported_stream_events() -> List[Enum]:
-        return []
+        return [
+            MarketEvent.TradeUpdate,
+            MarketEvent.OrderUpdate,
+            AccountEvent.BalanceEvent,
+            OrderBookDataSourceEvent.TRADE_EVENT,
+            OrderBookDataSourceEvent.DIFF_EVENT,
+            OrderBookDataSourceEvent.SNAPSHOT_EVENT,
+        ]
 
     def get_supported_order_types(self) -> List[OrderType]:
         return [OrderType.LIMIT]
 
     async def start(self):
-        pass
+        self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
+            coro=self._update_markets_loop()
+        )
 
     async def stop(self):
-        pass
+        self._tasks.update_markets and self._tasks.update_markets.cancel()
+        self._tasks.update_markets = None
 
     async def place_order(self, order: GatewayInFlightOrder, **kwargs) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         order.client_order_id = generate_hash(order)
@@ -133,7 +145,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         return placed_order.client_id, misc_updates
 
-    async def batch_order_create(self, orders_to_create: List[InFlightOrder]) -> List[PlaceOrderResult]:
+    async def batch_order_create(self, orders_to_create: List[GatewayInFlightOrder]) -> List[PlaceOrderResult]:
         candidate_orders = []
         client_ids = []
         for order_to_create in orders_to_create:
@@ -245,7 +257,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         return True, misc_updates
 
-    async def batch_order_cancel(self, orders_to_cancel: List[InFlightOrder]) -> List[CancelOrderResult]:
+    async def batch_order_cancel(self, orders_to_cancel: List[GatewayInFlightOrder]) -> List[CancelOrderResult]:
         client_ids = [order.client_order_id for order in orders_to_cancel]
 
         in_flight_orders_to_cancel = [
@@ -376,20 +388,116 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         return balances
 
-    async def get_order_status_update(self, in_flight_order: InFlightOrder) -> OrderUpdate:
-        pass
+    async def get_order_status_update(self, in_flight_order: GatewayInFlightOrder) -> OrderUpdate:
+        default: Optional[OrderUpdate] = None
 
-    async def get_all_order_fills(self, in_flight_order: InFlightOrder) -> List[TradeUpdate]:
-        pass
+        await in_flight_order.get_exchange_order_id()
+
+        response = await self._gateway.kujira_get_order({
+            "chain": self._chain,
+            "network": self._network,
+            "connector": self._connector,
+            "id": in_flight_order.exchange_order_id,
+            "marketId": self._market.id,
+            "ownerAddress": self._owner_address,
+        })
+
+        order = DotMap(response, _dynamic=False)
+
+        if order:
+            order_status = KujiraOrderStatus.to_hummingbot(order.status)
+
+            if in_flight_order.current_state != order_status:
+                timestamp = time()
+
+                open_update = OrderUpdate(
+                    trading_pair=in_flight_order.trading_pair,
+                    update_timestamp=timestamp,
+                    new_state=order_status,
+                    client_order_id=in_flight_order.client_order_id,
+                    exchange_order_id=in_flight_order.exchange_order_id,
+                    misc_updates={
+                        "creation_transaction_hash": in_flight_order.creation_transaction_hash,
+                        "cancelation_transaction_hash": in_flight_order.cancel_tx_hash,
+                    },
+                )
+                self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=open_update)
+
+        return default
+
+    async def get_all_order_fills(self, in_flight_order: GatewayInFlightOrder) -> List[TradeUpdate]:
+        response = await self._gateway.kujira_get_order({
+            "chain": self._chain,
+            "network": self._network,
+            "connector": self._connector,
+            "id": in_flight_order.exchange_order_id,
+            "marketId": self._market.id,
+            "ownerAddress": self._owner_address,
+            "status": KujiraOrderStatus.FILLED.value[0]
+        })
+
+        filled_order = DotMap(response, _dynamic=False)
+
+        if filled_order:
+            timestamp = time()
+            trade_id = str(timestamp)
+
+            # Simplified approach
+            # is_taker = in_flight_order.order_type == OrderType.LIMIT
+
+            # order_book_message = OrderBookMessage(
+            #     message_type=OrderBookMessageType.TRADE,
+            #     timestamp=timestamp,
+            #     content={
+            #         "trade_id": trade_id,
+            #         "trading_pair": in_flight_order.trading_pair,
+            #         "trade_type": in_flight_order.trade_type,
+            #         "amount": in_flight_order.amount,
+            #         "price": in_flight_order.price,
+            #         "is_taker": is_taker,
+            #     },
+            # )
+
+            trade_update = TradeUpdate(
+                trade_id=trade_id,
+                client_order_id=in_flight_order.client_order_id,
+                exchange_order_id=in_flight_order.exchange_order_id,
+                trading_pair=in_flight_order.trading_pair,
+                fill_timestamp=timestamp,
+                fill_price=in_flight_order.price,
+                fill_base_amount=in_flight_order.amount,
+                fill_quote_amount=in_flight_order.price * in_flight_order.amount,
+                fee=TradeFeeBase.new_spot_fee(
+                    fee_schema=TradeFeeSchema(),
+                    trade_type=in_flight_order.trade_type,
+                    flat_fees=[TokenAmount(
+                        amount=Decimal(self._market.fees.taker),
+                        token=self._market.quoteToken.symbol
+                    )]
+                ),
+            )
+
+            return [trade_update]
+
+        return []
 
     def is_order_not_found_during_status_update_error(self, status_update_exception: Exception) -> bool:
-        pass
+        return str(status_update_exception).startswith("No update found for order")  # TODO is this correct?!!!
 
     def is_order_not_found_during_cancelation_error(self, cancelation_exception: Exception) -> bool:
-        pass
+        return False
 
     async def check_network_status(self) -> NetworkStatus:
-        pass
+        try:
+            await self._gateway.ping_gateway()
+
+            return NetworkStatus.CONNECTED
+        except asyncio.CancelledError:
+            raise
+        except Exception as exception:
+            self.logger().error(exception)
+
+            return NetworkStatus.NOT_CONNECTED
 
     @property
     def is_cancel_request_in_exchange_synchronous(self) -> bool:
@@ -413,10 +521,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     def _parse_trading_rule(self, trading_pair: str, market_info: Any) -> TradingRule:
         trading_rule = TradingRule(
             trading_pair=trading_pair,
-            min_order_size=market_info.minimumOrderSize,
-            min_price_increment=market_info.minimumPriceIncrement,
-            min_base_amount_increment=market_info.minimumBaseAmountIncrement,
-            min_quote_amount_increment=market_info.minimumQuoteAmountIncrement,
+            min_order_size=Decimal(market_info.minimumOrderSize),
+            min_price_increment=Decimal(market_info.minimumPriceIncrement),
+            min_base_amount_increment=Decimal(market_info.minimumBaseAmountIncrement),
+            min_quote_amount_increment=Decimal(market_info.minimumQuoteAmountIncrement),
         )
 
         return trading_rule
@@ -435,3 +543,17 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             maker_flat_fees=[],
             taker_flat_fees=[]
         )
+
+    async def _update_markets_loop(self):
+        while True:
+            await self._update_markets()
+            await asyncio.sleep(MARKETS_UPDATE_INTERVAL)
+
+    # async def _check_if_order_failed_based_on_transaction(
+    #     self,
+    #     transaction: Any,
+    #     order: GatewayInFlightOrder
+    # ) -> bool:
+    #     order_id = await order.get_exchange_order_id()
+    #
+    #     return order_id.lower() not in transaction.data.lower()  # TODO fix, bring data to the transaction object!!!
