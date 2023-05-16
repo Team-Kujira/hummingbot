@@ -396,16 +396,42 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return True
 
     def _check_markets_initialized(self) -> bool:
-        pass
+        return self._markets is not None and bool(self._markets)
 
     async def _update_markets(self):
-        pass
+        response = await self._gateway.kujira_get_markets({
+            "chain": self._chain,
+            "network": self._network,
+            "connector": self._connector,
+            "marketIds": [market.id for market in self._markets],
+        })
+
+        self._markets = DotMap(response, _dynamic=False)
+
+        return self._markets
 
     def _parse_trading_rule(self, trading_pair: str, market_info: Any) -> TradingRule:
-        pass
+        trading_rule = TradingRule(
+            trading_pair=trading_pair,
+            min_order_size=market_info.minimumOrderSize,
+            min_price_increment=market_info.minimumPriceIncrement,
+            min_base_amount_increment=market_info.minimumBaseAmountIncrement,
+            min_quote_amount_increment=market_info.minimumQuoteAmountIncrement,
+        )
+
+        return trading_rule
 
     def _get_exchange_trading_pair_from_market_info(self, market_info: Any) -> str:
-        pass
+        return market_info.id
 
     def _get_maker_taker_exchange_fee_rates_from_market_info(self, market_info: Any) -> MakerTakerExchangeFeeRates:
-        pass
+        fee_scaler = Decimal("1") - Decimal(market_info.fees.serviceProvider)
+        maker_fee = Decimal(market_info.fees.maker) * fee_scaler
+        taker_fee = Decimal(market_info.fees.taker) * fee_scaler
+
+        return MakerTakerExchangeFeeRates(
+            maker=maker_fee,
+            taker=taker_fee,
+            maker_flat_fees=[],
+            taker_flat_fees=[]
+        )
