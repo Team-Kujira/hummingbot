@@ -44,7 +44,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._connector = CONNECTOR
         self._owner_address = connector_spec["wallet_address"]
         self._payer_address = self._owner_address
+
+        self._trading_pair = None
+        if self._trading_pairs:
+            self._trading_pair = self._trading_pairs[0]
+
         self._markets_names = [trading_pair.replace("-", "/") for trading_pair in trading_pairs]
+
+        self._market_name = None
+        if self._markets_names:
+            self._market_name = self._markets_names[0]
+
+        self._markets_name_id_map = None
 
         self._markets = None
         self._market = None
@@ -108,8 +119,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     "connector": self._connector,
                     "orders": [{
                         "clientId": order.client_order_id,
-                        "marketId": (await self._market).id,
-                        "marketName": (await self._market).name,
+                        "marketId": self._market.id,
+                        "marketName": self._market.name,
                         "ownerAddress": self._owner_address,
                         "side": KujiraOrderSide.from_hummingbot(order.trade_type).value[0],
                         "price": str(order.price),
@@ -158,8 +169,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             candidate_order = {
                 "clientId": order_to_create.client_order_id,
-                "marketId": (await self._market).id,
-                "marketName": (await self._market).name,
+                "marketId": self._market.id,
+                "marketName": self._market.name,
                 "ownerAddress": self._owner_address,
                 "side": KujiraOrderSide.from_hummingbot(order_to_create.trade_type).value[0],
                 "price": str(order_to_create.price),
@@ -231,7 +242,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     "network": self._network,
                     "connector": self._connector,
                     "ids": [order.exchange_order_id],
-                    "marketId": (await self._market).id,
+                    "marketId": self._market.id,
                     "ownerAddress": self._owner_address,
                 })
 
@@ -287,7 +298,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     "network": self._network,
                     "connector": self._connector,
                     "ids": ids,
-                    "marketId": (await self._market).id,
+                    "marketId": self._market.id,
                     "ownerAddress": self._owner_address,
                 })
 
@@ -330,7 +341,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
-            "marketId": (await self._market).id,
+            "marketId": self._market.id,
         })
 
         ticker = DotMap(response, _dynamic=False)
@@ -342,7 +353,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
-            "marketId": (await self._market).id,
+            "marketId": self._market.id,
         })
 
         order_book = DotMap(response, _dynamic=False)
@@ -410,7 +421,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "network": self._network,
             "connector": self._connector,
             "id": in_flight_order.exchange_order_id,
-            "marketId": (await self._market).id,
+            "marketId": self._market.id,
             "ownerAddress": self._owner_address,
         })
 
@@ -443,7 +454,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "network": self._network,
             "connector": self._connector,
             "id": in_flight_order.exchange_order_id,
-            "marketId": (await self._market).id,
+            "marketId": self._market.id,
             "ownerAddress": self._owner_address,
             "status": KujiraOrderStatus.FILLED.value[0]
         })
@@ -483,8 +494,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     fee_schema=TradeFeeSchema(),
                     trade_type=in_flight_order.trade_type,
                     flat_fees=[TokenAmount(
-                        amount=Decimal((await self._market).fees.taker),
-                        token=(await self._market).quoteToken.symbol
+                        amount=Decimal(self._market.fees.taker),
+                        token=self._market.quoteToken.symbol
                     )]
                 ),
             )
@@ -532,9 +543,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             response = await self._gateway.kujira_get_markets_all(request)
 
         self._markets = DotMap(response, _dynamic=False)
+        self._markets_name_id_map = {market.name: market.id for market in self._markets.values()}
 
-        if self._trading_pairs:
-            self._market = self._markets[self._markets_names[0]]
+        if self._market_name:
+            self._market = self._markets[self._markets_name_id_map[self._market_name]]
 
         return self._markets
 
