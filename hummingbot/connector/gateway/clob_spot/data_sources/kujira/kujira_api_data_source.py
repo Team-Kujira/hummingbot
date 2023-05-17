@@ -384,11 +384,16 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         balances.total.free = Decimal(balances.total.free)
         balances.total.lockedInOrders = Decimal(balances.total.lockedInOrders)
         balances.total.unsettled = Decimal(balances.total.unsettled)
+        balances["total_balance"] = Decimal(balances.total.free + balances.total.lockedInOrders + balances.total.unsettled)
+        balances["available_balance"] = Decimal(balances.total.free)
 
         for balance in balances.tokens.values():
             balance.free = Decimal(balance.free)
             balance.lockedInOrders = Decimal(balance.lockedInOrders)
             balance.unsettled = Decimal(balance.unsettled)
+            balances[balance.token.symbol] = DotMap({}, _dynamic=False)
+            balances[balance.token.symbol]["total_balance"] = Decimal(balance.free + balance.lockedInOrders + balance.unsettled)
+            balances[balance.token.symbol]["available_balance"] = Decimal(balance.free)
 
         return balances
 
