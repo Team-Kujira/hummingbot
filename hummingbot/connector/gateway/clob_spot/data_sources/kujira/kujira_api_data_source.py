@@ -20,7 +20,7 @@ from hummingbot.core.gateway.gateway_http_client import GatewayHttpClient
 from hummingbot.core.network_iterator import NetworkStatus
 from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
 
-from .kujira_constants import CONNECTOR, KUJIRA_NATIVE_TOKEN, MARKETS_UPDATE_INTERVAL
+from .kujira_constants import CONNECTOR, MARKETS_UPDATE_INTERVAL
 from .kujira_helpers import generate_hash
 from .kujira_types import OrderSide as KujiraOrderSide, OrderStatus as KujiraOrderStatus, OrderType as KujiraOrderType
 
@@ -44,11 +44,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._connector = CONNECTOR
         self._owner_address = connector_spec["wallet_address"]
         self._payer_address = self._owner_address
-        self._markets = DotMap({}, _dynamic=False)
-        self._market = DotMap({}, _dynamic=False)
+        self._markets_names = [trading_pair.replace("-", "/") for trading_pair in trading_pairs]
+
+        self._markets = None
+        self._market = None
 
         self._tasks = DotMap({
-            "update_markets"
+            "update_markets": None,
         }, _dynamic=False)
 
         self._locks = DotMap({
@@ -104,8 +106,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     "connector": self._connector,
                     "orders": [{
                         "clientId": order.client_order_id,
-                        "marketId": self._market.id,
-                        "marketName": self._market.name,
+                        "marketId": (await self._market).id,
+                        "marketName": (await self._market).name,
                         "ownerAddress": self._owner_address,
                         "side": KujiraOrderSide.from_hummingbot(order.trade_type).value[0],
                         "price": str(order.price),
@@ -154,8 +156,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             candidate_order = {
                 "clientId": order_to_create.client_order_id,
-                "marketId": self._market.id,
-                "marketName": self._market.name,
+                "marketId": (await self._market).id,
+                "marketName": (await self._market).name,
                 "ownerAddress": self._owner_address,
                 "side": KujiraOrderSide.from_hummingbot(order_to_create.trade_type).value[0],
                 "price": str(order_to_create.price),
@@ -227,7 +229,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     "network": self._network,
                     "connector": self._connector,
                     "ids": [order.exchange_order_id],
-                    "marketId": self._market.id,
+                    "marketId": (await self._market).id,
                     "ownerAddress": self._owner_address,
                 })
 
@@ -283,7 +285,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     "network": self._network,
                     "connector": self._connector,
                     "ids": ids,
-                    "marketId": self._market.id,
+                    "marketId": (await self._market).id,
                     "ownerAddress": self._owner_address,
                 })
 
@@ -326,7 +328,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
-            "marketId": self._market.id,
+            "marketId": (await self._market).id,
         })
 
         ticker = DotMap(response, _dynamic=False)
@@ -338,7 +340,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
-            "marketId": self._market.id,
+            "marketId": (await self._market).id,
         })
 
         order_book = DotMap(response, _dynamic=False)
@@ -369,19 +371,21 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         return snapshot
 
-    @property
     async def get_account_balances(self) -> Dict[str, Dict[str, Decimal]]:
         response = await self._gateway.kujira_get_balances_all({
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
             "ownerAddress": self._owner_address,
-            "tokensSymbols": [self._market.baseToken.symbol, self._market.quoteToken.symbol, KUJIRA_NATIVE_TOKEN.symbol],
         })
 
         balances = DotMap(response, _dynamic=False)
 
-        for balance in balances:
+        balances.total.free = Decimal(balances.total.free)
+        balances.total.lockedInOrders = Decimal(balances.total.lockedInOrders)
+        balances.total.unsettled = Decimal(balances.total.unsettled)
+
+        for balance in balances.tokens.values():
             balance.free = Decimal(balance.free)
             balance.lockedInOrders = Decimal(balance.lockedInOrders)
             balance.unsettled = Decimal(balance.unsettled)
@@ -398,7 +402,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "network": self._network,
             "connector": self._connector,
             "id": in_flight_order.exchange_order_id,
-            "marketId": self._market.id,
+            "marketId": (await self._market).id,
             "ownerAddress": self._owner_address,
         })
 
@@ -431,7 +435,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "network": self._network,
             "connector": self._connector,
             "id": in_flight_order.exchange_order_id,
-            "marketId": self._market.id,
+            "marketId": (await self._market).id,
             "ownerAddress": self._owner_address,
             "status": KujiraOrderStatus.FILLED.value[0]
         })
@@ -471,8 +475,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     fee_schema=TradeFeeSchema(),
                     trade_type=in_flight_order.trade_type,
                     flat_fees=[TokenAmount(
-                        amount=Decimal(self._market.fees.taker),
-                        token=self._market.quoteToken.symbol
+                        amount=Decimal((await self._market).fees.taker),
+                        token=(await self._market).quoteToken.symbol
                     )]
                 ),
             )
@@ -507,14 +511,22 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return self._markets is not None and bool(self._markets)
 
     async def _update_markets(self):
-        response = await self._gateway.kujira_get_markets({
+        request = {
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
-            "marketIds": [market.id for market in self._markets],
-        })
+        }
+
+        if self._markets_names:
+            request["names"] = self._markets_names
+            response = await self._gateway.kujira_get_markets(request)
+        else:
+            response = await self._gateway.kujira_get_markets_all(request)
 
         self._markets = DotMap(response, _dynamic=False)
+
+        if self._trading_pairs:
+            self._market = self._markets[self._markets_names[0]]
 
         return self._markets
 
