@@ -60,8 +60,8 @@ class OrderStatus(Enum):
 
 
 class OrderType(Enum):
-    MARKET = "MARKET",
-    LIMIT = "LIMIT"
+    MARKET = 'MARKET',
+    LIMIT = 'LIMIT',
     IOC = 'IOC',  # Immediate or Cancel
     POST_ONLY = 'POST_ONLY',
 

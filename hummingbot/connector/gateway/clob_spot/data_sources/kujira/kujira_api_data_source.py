@@ -21,7 +21,11 @@ from hummingbot.core.network_iterator import NetworkStatus
 from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
 
 from .kujira_constants import CONNECTOR, MARKETS_UPDATE_INTERVAL
-from .kujira_helpers import generate_hash
+from .kujira_helpers import (
+    convert_hb_trading_pair_to_market_name,
+    convert_market_name_to_hb_trading_pair,
+    generate_hash,
+)
 from .kujira_types import OrderSide as KujiraOrderSide, OrderStatus as KujiraOrderStatus, OrderType as KujiraOrderType
 
 
@@ -49,7 +53,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         if self._trading_pairs:
             self._trading_pair = self._trading_pairs[0]
 
-        self._markets_names = [trading_pair.replace("-", "/") for trading_pair in trading_pairs]
+        self._markets_names = [convert_hb_trading_pair_to_market_name(trading_pair) for trading_pair in trading_pairs]
 
         self._market_name = None
         if self._markets_names:
@@ -141,7 +145,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     }]
                 })
 
-                placed_orders = response.values()
+                placed_orders = list(response.values())
                 placed_order = DotMap(placed_orders[0], _dynamic=False)
 
                 self.logger().debug(
@@ -169,7 +173,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self.logger().debug("place_order: end")
 
-        return placed_order.client_id, misc_updates
+        return placed_order.clientId, misc_updates
 
     async def batch_order_create(self, orders_to_create: List[GatewayInFlightOrder]) -> List[PlaceOrderResult]:
         self.logger().debug("batch_order_create: start")
@@ -451,6 +455,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def get_order_status_update(self, in_flight_order: GatewayInFlightOrder) -> OrderUpdate:
         self.logger().debug("get_order_status_update: start")
 
+        open_update = None
+
         default: Optional[OrderUpdate] = None
 
         await in_flight_order.get_exchange_order_id()
@@ -494,6 +500,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     async def get_all_order_fills(self, in_flight_order: GatewayInFlightOrder) -> List[TradeUpdate]:
         self.logger().debug("get_all_order_fills: start")
+
+        trade_update = None
 
         response = await self._gateway.kujira_get_order({
             "chain": self._chain,
@@ -630,6 +638,12 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             self._market = self._markets[self._markets_name_id_map[self._market_name]]
 
         self.logger().debug("_update_markets: end")
+
+        self._markets_info.clear()
+        for market in self._markets.values():
+            market["hb_trading_pair"] = convert_market_name_to_hb_trading_pair(market.name)
+
+            self._markets_info[market["hb_trading_pair"]] = market
 
         return self._markets
 
