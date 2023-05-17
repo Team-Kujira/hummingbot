@@ -100,17 +100,24 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return [OrderType.LIMIT]
 
     async def start(self):
+        self.logger().setLevel("DEBUG")
+        self.logger().debug("start: start")
+
         await self._update_markets()
 
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
             coro=self._update_markets_loop()
         )
+        self.logger().debug("start: end")
 
     async def stop(self):
+        self.logger().debug("stop: start")
         self._tasks.update_markets and self._tasks.update_markets.cancel()
         self._tasks.update_markets = None
+        self.logger().debug("stop: end")
 
     async def place_order(self, order: GatewayInFlightOrder, **kwargs) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+        self.logger().debug("place_order: start")
         order.client_order_id = generate_hash(order)
 
         async with self._locks.place_order:
@@ -160,9 +167,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "creation_transaction_hash": transaction_hash,
         }, _dynamic=False)
 
+        self.logger().debug("place_order: end")
+
         return placed_order.client_id, misc_updates
 
     async def batch_order_create(self, orders_to_create: List[GatewayInFlightOrder]) -> List[PlaceOrderResult]:
+        self.logger().debug("batch_order_create: start")
+
         candidate_orders = []
         client_ids = []
         for order_to_create in orders_to_create:
@@ -232,9 +243,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 exception=None,
             ))
 
+        self.logger().debug("batch_order_create: end")
+
         return place_order_results
 
     async def cancel_order(self, order: GatewayInFlightOrder) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        self.logger().debug("cancel_order: start")
+
         await order.get_exchange_order_id()
 
         async with self._locks.cancel_order:
@@ -272,9 +287,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "cancelation_transaction_hash": transaction_hash,
         }, _dynamic=False)
 
+        self.logger().debug("cancel_order: end")
+
         return True, misc_updates
 
     async def batch_order_cancel(self, orders_to_cancel: List[GatewayInFlightOrder]) -> List[CancelOrderResult]:
+        self.logger().debug("batch_order_cancel: start")
+
         client_ids = [order.client_order_id for order in orders_to_cancel]
 
         in_flight_orders_to_cancel = [
@@ -336,9 +355,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 exception=None,
             ))
 
+        self.logger().debug("batch_order_cancel: end")
+
         return cancel_order_results
 
     async def get_last_traded_price(self, trading_pair: str) -> Decimal:
+        self.logger().debug("get_last_traded_price: start")
+
         response = await self._gateway.kujira_get_ticker({
             "chain": self._chain,
             "network": self._network,
@@ -348,9 +371,15 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         ticker = DotMap(response, _dynamic=False)
 
-        return Decimal(ticker.price)
+        ticker_price = Decimal(ticker.price)
+
+        self.logger().debug("get_last_traded_price: end")
+
+        return ticker_price
 
     async def get_order_book_snapshot(self, trading_pair: str) -> OrderBookMessage:
+        self.logger().debug("get_order_book_snapshot: start")
+
         response = await self._gateway.kujira_get_order_book({
             "chain": self._chain,
             "network": self._network,
@@ -384,9 +413,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             timestamp=timestamp
         )
 
+        self.logger().debug("get_order_book_snapshot: end")
+
         return snapshot
 
     async def get_account_balances(self) -> Dict[str, Dict[str, Decimal]]:
+        self.logger().debug("get_account_balances: start")
+
         response = await self._gateway.kujira_get_balances_all({
             "chain": self._chain,
             "network": self._network,
@@ -411,9 +444,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self._user_balances = balances
 
+        self.logger().debug("get_account_balances: end")
+
         return hb_balances
 
     async def get_order_status_update(self, in_flight_order: GatewayInFlightOrder) -> OrderUpdate:
+        self.logger().debug("get_order_status_update: start")
+
         default: Optional[OrderUpdate] = None
 
         await in_flight_order.get_exchange_order_id()
@@ -448,9 +485,16 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 )
                 self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=open_update)
 
+        self.logger().debug("get_order_status_update: end")
+
+        if open_update:
+            return open_update
+
         return default
 
     async def get_all_order_fills(self, in_flight_order: GatewayInFlightOrder) -> List[TradeUpdate]:
+        self.logger().debug("get_all_order_fills: start")
+
         response = await self._gateway.kujira_get_order({
             "chain": self._chain,
             "network": self._network,
@@ -502,36 +546,71 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 ),
             )
 
+        self.logger().debug("get_all_order_fills: end")
+
+        if trade_update:
             return [trade_update]
 
         return []
 
     def is_order_not_found_during_status_update_error(self, status_update_exception: Exception) -> bool:
-        return str(status_update_exception).startswith("No update found for order")  # TODO is this correct?!!!
+        self.logger().debug("is_order_not_found_during_status_update_error: start")
+
+        output = str(status_update_exception).startswith("No update found for order")  # TODO is this correct?!!!
+
+        self.logger().debug("is_order_not_found_during_status_update_error: end")
+
+        return output
 
     def is_order_not_found_during_cancelation_error(self, cancelation_exception: Exception) -> bool:
-        return False
+        self.logger().debug("is_order_not_found_during_cancelation_error: start")
+
+        output = False
+
+        self.logger().debug("is_order_not_found_during_cancelation_error: end")
+
+        return output
 
     async def check_network_status(self) -> NetworkStatus:
+        self.logger().debug("check_network_status: start")
+
         try:
             await self._gateway.ping_gateway()
 
-            return NetworkStatus.CONNECTED
+            output = NetworkStatus.CONNECTED
         except asyncio.CancelledError:
             raise
         except Exception as exception:
             self.logger().error(exception)
 
-            return NetworkStatus.NOT_CONNECTED
+            output = NetworkStatus.NOT_CONNECTED
+
+        self.logger().debug("check_network_status: end")
+
+        return output
 
     @property
     def is_cancel_request_in_exchange_synchronous(self) -> bool:
-        return True
+        self.logger().debug("is_cancel_request_in_exchange_synchronous: start")
+
+        output = True
+
+        self.logger().debug("is_cancel_request_in_exchange_synchronous: end")
+
+        return output
 
     def _check_markets_initialized(self) -> bool:
-        return self._markets is not None and bool(self._markets)
+        # self.logger().debug("_check_markets_initialized: start")
+
+        output = self._markets is not None and bool(self._markets)
+
+        # self.logger().debug("_check_markets_initialized: end")
+
+        return output
 
     async def _update_markets(self):
+        self.logger().debug("_update_markets: start")
+
         request = {
             "chain": self._chain,
             "network": self._network,
@@ -550,9 +629,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         if self._market_name:
             self._market = self._markets[self._markets_name_id_map[self._market_name]]
 
+        self.logger().debug("_update_markets: end")
+
         return self._markets
 
     def _parse_trading_rule(self, trading_pair: str, market_info: Any) -> TradingRule:
+        self.logger().debug("_parse_trading_rule: start")
+
         trading_rule = TradingRule(
             trading_pair=trading_pair,
             min_order_size=Decimal(market_info.minimumOrderSize),
@@ -561,27 +644,47 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             min_quote_amount_increment=Decimal(market_info.minimumQuoteAmountIncrement),
         )
 
+        self.logger().debug("_parse_trading_rule: end")
+
         return trading_rule
 
     def _get_exchange_trading_pair_from_market_info(self, market_info: Any) -> str:
-        return market_info.id
+        self.logger().debug("_get_exchange_trading_pair_from_market_info: start")
+
+        output = market_info.id
+
+        self.logger().debug("_get_exchange_trading_pair_from_market_info: end")
+
+        return output
 
     def _get_maker_taker_exchange_fee_rates_from_market_info(self, market_info: Any) -> MakerTakerExchangeFeeRates:
+        self.logger().debug("_get_maker_taker_exchange_fee_rates_from_market_info: start")
+
         fee_scaler = Decimal("1") - Decimal(market_info.fees.serviceProvider)
         maker_fee = Decimal(market_info.fees.maker) * fee_scaler
         taker_fee = Decimal(market_info.fees.taker) * fee_scaler
 
-        return MakerTakerExchangeFeeRates(
+        output = MakerTakerExchangeFeeRates(
             maker=maker_fee,
             taker=taker_fee,
             maker_flat_fees=[],
             taker_flat_fees=[]
         )
 
+        self.logger().debug("_get_maker_taker_exchange_fee_rates_from_market_info: end")
+
+        return output
+
     async def _update_markets_loop(self):
+        self.logger().debug("_update_markets_loop: start")
+
         while True:
+            self.logger().debug("_update_markets_loop: start loop")
+
             await self._update_markets()
             await asyncio.sleep(MARKETS_UPDATE_INTERVAL)
+
+            self.logger().debug("_update_markets_loop: end loop")
 
     # async def _check_if_order_failed_based_on_transaction(
     #     self,
