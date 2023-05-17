@@ -29,6 +29,7 @@ from pyinjective.utils import derivative_price_to_backend, derivative_quantity_t
 from pyinjective.wallet import Address
 
 from hummingbot.core.data_type.common import OrderType as HummingBotOrderType, TradeType as HummingBotOrderSide
+from hummingbot.core.data_type.in_flight_order import OrderState as HummingBotOrderStatus
 
 
 class OrderStatus(Enum):
@@ -41,20 +42,65 @@ class OrderStatus(Enum):
     UNKNOWN = "UNKNOWN"
 
     @staticmethod
-    def from_hummingbot(target: str):
-        if target == 'OPEN':
+    def from_name(name: str):
+        if name == "OPEN":
             return OrderStatus.OPEN
-        elif target == 'CANCELLED':
+        elif name == "CANCELLED":
             return OrderStatus.CANCELLED
+        elif name == "PARTIALLY_FILLED":
+            return OrderStatus.PARTIALLY_FILLED
+        elif name == "FILLED":
+            return OrderStatus.FILLED
+        elif name == "CREATION_PENDING":
+            return OrderStatus.CREATION_PENDING
+        elif name == "CANCELLATION_PENDING":
+            return OrderStatus.CANCELLATION_PENDING
+        else:
+            raise ValueError(f"Unknown order status: {name}")
+
+    @staticmethod
+    def from_hummingbot(target: HummingBotOrderStatus):
+        if target == HummingBotOrderStatus.PENDING_CREATE:
+            return OrderStatus.CREATION_PENDING
+        elif target == HummingBotOrderStatus.OPEN:
+            return OrderStatus.OPEN
+        elif target == HummingBotOrderStatus.PENDING_CANCEL:
+            return OrderStatus.CANCELLATION_PENDING
+        elif target == HummingBotOrderStatus.CANCELED:
+            return OrderStatus.CANCELLED
+        elif target == HummingBotOrderStatus.PARTIALLY_FILLED:
+            return OrderStatus.PARTIALLY_FILLED
+        elif target == HummingBotOrderStatus.FILLED:
+            return OrderStatus.FILLED
+        # elif target == HummingBotOrderStatus.FAILED:
+        #     return OrderStatus.FAILED
+        # elif target == HummingBotOrderStatus.PENDING_APPROVAL:
+        #     return OrderStatus.APPROVAL_PENDING
+        # elif target == HummingBotOrderStatus.APPROVED:
+        #     return OrderStatus.APPROVED
+        # elif target == HummingBotOrderStatus.CREATED:
+        #     return OrderStatus.CREATED
+        # elif target == HummingBotOrderStatus.COMPLETED:
+        #     return OrderStatus.COMPLETED
         else:
             raise ValueError(f"Unknown order status: {target}")
 
     @staticmethod
     def to_hummingbot(self):
         if self == OrderStatus.OPEN:
-            return 'OPEN'
+            return HummingBotOrderStatus.OPEN
         elif self == OrderStatus.CANCELLED:
-            return 'CANCELLED'
+            return HummingBotOrderStatus.CANCELED
+        elif self == OrderStatus.PARTIALLY_FILLED:
+            return HummingBotOrderStatus.PARTIALLY_FILLED
+        elif self == OrderStatus.FILLED:
+            return HummingBotOrderStatus.FILLED
+        elif self == OrderStatus.CREATION_PENDING:
+            return HummingBotOrderStatus.PENDING_CREATE
+        elif self == OrderStatus.CANCELLATION_PENDING:
+            return HummingBotOrderStatus.PENDING_CANCEL
+        # elif self == OrderStatus.UNKNOWN:
+        #     return HummingBotOrderStatus.UNKNOWN
         else:
             raise ValueError(f"Unknown order status: {self}")
 
@@ -64,6 +110,19 @@ class OrderType(Enum):
     LIMIT = 'LIMIT',
     IOC = 'IOC',  # Immediate or Cancel
     POST_ONLY = 'POST_ONLY',
+
+    @staticmethod
+    def from_name(name: str):
+        if name == "MARKET":
+            return OrderType.MARKET
+        elif name == "LIMIT":
+            return OrderType.LIMIT
+        elif name == "IOC":
+            return OrderType.IOC
+        elif name == "POST_ONLY":
+            return OrderType.POST_ONLY
+        else:
+            raise ValueError(f"Unknown order type: {name}")
 
     @staticmethod
     def from_hummingbot(target: HummingBotOrderType):
@@ -83,6 +142,15 @@ class OrderType(Enum):
 class OrderSide(Enum):
     BUY = 'BUY',
     SELL = 'SELL',
+
+    @staticmethod
+    def from_name(name: str):
+        if name == "BUY":
+            return OrderSide.BUY
+        elif name == "SELL":
+            return OrderSide.SELL
+        else:
+            raise ValueError(f"Unknown order side: {name}")
 
     @staticmethod
     def from_hummingbot(target: HummingBotOrderSide):

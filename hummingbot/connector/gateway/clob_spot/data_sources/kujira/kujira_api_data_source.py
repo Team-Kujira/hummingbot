@@ -457,8 +457,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         open_update = None
 
-        default: Optional[OrderUpdate] = None
-
         await in_flight_order.get_exchange_order_id()
 
         response = await self._gateway.kujira_get_order({
@@ -473,7 +471,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         order = DotMap(response, _dynamic=False)
 
         if order:
-            order_status = KujiraOrderStatus.to_hummingbot(order.status)
+            order_status = KujiraOrderStatus.to_hummingbot(KujiraOrderStatus.from_name(order.status))
 
             if in_flight_order.current_state != order_status:
                 timestamp = time()
@@ -493,10 +491,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self.logger().debug("get_order_status_update: end")
 
-        if open_update:
-            return open_update
-
-        return default
+        return open_update
 
     async def get_all_order_fills(self, in_flight_order: GatewayInFlightOrder) -> List[TradeUpdate]:
         self.logger().debug("get_all_order_fills: start")
