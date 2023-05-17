@@ -100,6 +100,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return [OrderType.LIMIT]
 
     async def start(self):
+        await self._update_markets()
+
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
             coro=self._update_markets_loop()
         )
