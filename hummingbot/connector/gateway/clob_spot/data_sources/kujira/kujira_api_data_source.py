@@ -75,8 +75,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "place_orders": asyncio.Lock(),
             "cancel_order": asyncio.Lock(),
             "cancel_orders": asyncio.Lock(),
+            "cancel_all_orders": asyncio.Lock(),
             "settle_market_funds": asyncio.Lock(),
             "settle_markets_funds": asyncio.Lock(),
+            "settle_all_markets_funds": asyncio.Lock(),
         }, _dynamic=False)
 
         self._gateway = GatewayHttpClient.get_instance(self._client_config)
@@ -109,6 +111,9 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         await self._update_markets()
 
+        await self.cancel_all_orders()
+        await self.settle_market_funds()
+
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
             coro=self._update_markets_loop()
         )
@@ -122,6 +127,9 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     async def place_order(self, order: GatewayInFlightOrder, **kwargs) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         self.logger().debug("place_order: start")
+
+        self._check_markets_initialized() or await self._update_markets()
+
         order.client_order_id = generate_hash(order)
 
         async with self._locks.place_order:
@@ -177,6 +185,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     async def batch_order_create(self, orders_to_create: List[GatewayInFlightOrder]) -> List[PlaceOrderResult]:
         self.logger().debug("batch_order_create: start")
+
+        self._check_markets_initialized() or await self._update_markets()
 
         candidate_orders = []
         client_ids = []
@@ -254,6 +264,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def cancel_order(self, order: GatewayInFlightOrder) -> Tuple[bool, Optional[Dict[str, Any]]]:
         self.logger().debug("cancel_order: start")
 
+        self._check_markets_initialized() or await self._update_markets()
+
         await order.get_exchange_order_id()
 
         async with self._locks.cancel_order:
@@ -297,6 +309,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     async def batch_order_cancel(self, orders_to_cancel: List[GatewayInFlightOrder]) -> List[CancelOrderResult]:
         self.logger().debug("batch_order_cancel: start")
+
+        self._check_markets_initialized() or await self._update_markets()
 
         client_ids = [order.client_order_id for order in orders_to_cancel]
 
@@ -345,7 +359,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             if transaction_hash in (None, ""):
                 raise RuntimeError(
-                    f"""Placement of orders "{client_ids}" / "{ids}" failed. Invalid transaction hash: "{transaction_hash}"."""
+                    f"""Cancellation of orders "{client_ids}" / "{ids}" failed. Invalid transaction hash: "{transaction_hash}"."""
                 )
 
         cancel_order_results = []
@@ -362,6 +376,75 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self.logger().debug("batch_order_cancel: end")
 
         return cancel_order_results
+
+    async def cancel_all_orders(self):
+        self.logger().debug("cancel_all_orders: start")
+
+        async with self._locks.cancel_all_orders:
+            try:
+                response = await self._gateway.kujira_delete_orders_all({
+                    "chain": self._chain,
+                    "network": self._network,
+                    "connector": self._connector,
+                    "marketId": self._market.id,
+                    "ownerAddress": self._owner_address,
+                })
+
+                cancelled_orders = DotMap(response, _dynamic=False)
+
+                ids = [order.id for order in cancelled_orders.values()]
+
+                hashes = set([order.hashes.cancellation for order in cancelled_orders.values()])
+
+                self.logger().debug(
+                    f"""Orders "{ids}" successfully cancelled. Transaction hash(es): "{hashes}"."""
+                )
+            except Exception as exception:
+                self.logger().debug(
+                    """Cancellation of all orders failed."""
+                )
+
+                raise exception
+
+            transaction_hash = "".join(hashes)
+
+            if transaction_hash in (None, ""):
+                raise RuntimeError(
+                    f"""Cancellation of orders "{ids}" failed. Invalid transaction hash: "{transaction_hash}"."""
+                )
+
+        cancel_order_results = []
+
+        self.logger().debug("cancel_all_orders: end")
+
+        return cancel_order_results
+
+    async def settle_market_funds(self):
+        self.logger().debug("settle_market_funds: start")
+
+        self._check_markets_initialized() or await self._update_markets()
+
+        async with self._locks.settle_market_funds:
+            try:
+                response = await self._gateway.kujira_post_market_withdraw({
+                    "chain": self._chain,
+                    "network": self._network,
+                    "connector": self._connector,
+                    "marketId": self._market.id,
+                    "ownerAddress": self._owner_address,
+                })
+
+                withdraw = DotMap(response, _dynamic=False)
+
+                self.logger().debug(
+                    f"""Settlement /  withdraw of funds for market {self._market.name} successful. Transaction hash: "{withdraw.hash}"."""
+                )
+            except Exception as exception:
+                self.logger().debug(
+                    f"""Settlement / withdraw of funds for market {self._market.name} failed."""
+                )
+
+                raise exception
 
     async def get_last_traded_price(self, trading_pair: str) -> Decimal:
         self.logger().debug("get_last_traded_price: start")
