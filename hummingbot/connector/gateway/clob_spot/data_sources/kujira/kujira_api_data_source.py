@@ -49,6 +49,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._markets = None
         self._market = None
 
+        self._user_balances = None
+
         self._tasks = DotMap({
             "update_markets": None,
         }, _dynamic=False)
@@ -384,18 +386,19 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         balances.total.free = Decimal(balances.total.free)
         balances.total.lockedInOrders = Decimal(balances.total.lockedInOrders)
         balances.total.unsettled = Decimal(balances.total.unsettled)
-        balances["total_balance"] = Decimal(balances.total.free + balances.total.lockedInOrders + balances.total.unsettled)
-        balances["available_balance"] = Decimal(balances.total.free)
 
+        hb_balances = {}
         for balance in balances.tokens.values():
             balance.free = Decimal(balance.free)
             balance.lockedInOrders = Decimal(balance.lockedInOrders)
             balance.unsettled = Decimal(balance.unsettled)
-            balances[balance.token.symbol] = DotMap({}, _dynamic=False)
-            balances[balance.token.symbol]["total_balance"] = Decimal(balance.free + balance.lockedInOrders + balance.unsettled)
-            balances[balance.token.symbol]["available_balance"] = Decimal(balance.free)
+            hb_balances[balance.token.symbol] = DotMap({}, _dynamic=False)
+            hb_balances[balance.token.symbol]["total_balance"] = Decimal(balance.free + balance.lockedInOrders + balance.unsettled)
+            hb_balances[balance.token.symbol]["available_balance"] = Decimal(balance.free)
 
-        return balances
+        self._user_balances = balances
+
+        return hb_balances
 
     async def get_order_status_update(self, in_flight_order: GatewayInFlightOrder) -> OrderUpdate:
         default: Optional[OrderUpdate] = None
