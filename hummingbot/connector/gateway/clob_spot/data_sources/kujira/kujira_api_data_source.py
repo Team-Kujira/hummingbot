@@ -13,7 +13,7 @@ from hummingbot.connector.gateway.common_types import CancelOrderResult, PlaceOr
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.trading_rule import TradingRule
 from hummingbot.core.data_type.common import OrderType
-from hummingbot.core.data_type.in_flight_order import OrderUpdate, TradeUpdate
+from hummingbot.core.data_type.in_flight_order import OrderState as HummingBotOrderStatus, OrderUpdate, TradeUpdate
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
 from hummingbot.core.data_type.trade_fee import MakerTakerExchangeFeeRates, TokenAmount, TradeFeeBase, TradeFeeSchema
 from hummingbot.core.event.events import AccountEvent, MarketEvent, OrderBookDataSourceEvent
@@ -112,8 +112,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         await self._update_markets()
 
-        await self.cancel_all_orders()
-        await self.settle_market_funds()
+        # await self.cancel_all_orders()
+        # await self.settle_market_funds()
 
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
             coro=self._update_markets_loop()
@@ -275,42 +275,48 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         await order.get_exchange_order_id()
 
+        transaction_hash = None
+
         async with self._locks.cancel_order:
             try:
                 request = {
                     "chain": self._chain,
                     "network": self._network,
                     "connector": self._connector,
-                    "ids": [order.exchange_order_id],
+                    "id": order.exchange_order_id,
                     "marketId": self._market.id,
                     "ownerAddress": self._owner_address,
                 }
 
                 self.logger().debug(f"""cancel_order request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.kujira_delete_orders(request)
+                response = await self._gateway.kujira_delete_order(request)
 
                 self.logger().debug(f"""cancel_order response:\n "{self._dump(response)}".""")
 
-                cancelled_orders = response.values()
-                cancelled_order = DotMap(cancelled_orders[0], _dynamic=False)
+                cancelled_order = DotMap(response, _dynamic=False)
+
+                transaction_hash = cancelled_order.hashes.creation
+
+                if transaction_hash in (None, ""):
+                    raise Exception(
+                        f"""Cancellation of order "{order.client_order_id}" / "{cancelled_order.id}" failed. Invalid transaction hash: "{transaction_hash}"."""
+                    )
 
                 self.logger().debug(
                     f"""Order "{order.client_order_id}" / "{cancelled_order.id}" successfully cancelled. Transaction hash: "{cancelled_order.hashes.cancelation}"."""
                 )
             except Exception as exception:
-                self.logger().debug(
-                    f"""Cancellation of order "{order.client_order_id}" / "{cancelled_order.id}" failed."""
-                )
+                if 'No orders with the specified information exist' in str(exception.args):
+                    self.logger().debug(
+                        f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" already cancelled."""
+                    )
+                else:
+                    self.logger().debug(
+                        f"""Cancellation of order "{order.client_order_id}" / "{cancelled_order.id}" failed."""
+                    )
 
-                raise exception
-
-            transaction_hash = cancelled_order.hashes.creation
-
-            if transaction_hash in (None, ""):
-                raise Exception(
-                    f"""Cancellation of order "{order.client_order_id}" / "{cancelled_order.id}" failed. Invalid transaction hash: "{transaction_hash}"."""
-                )
+                    raise exception
 
         misc_updates = DotMap({
             "cancelation_transaction_hash": transaction_hash,
@@ -524,7 +530,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return snapshot
 
     async def get_account_balances(self) -> Dict[str, Dict[str, Decimal]]:
-        self.logger().debug("get_account_balances: start")
+        # self.logger().debug("get_account_balances: start")
 
         response = await self._gateway.kujira_get_balances_all({
             "chain": self._chain,
@@ -550,7 +556,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self._user_balances = balances
 
-        self.logger().debug("get_account_balances: end")
+        # self.logger().debug("get_account_balances: end")
 
         return hb_balances
 
@@ -590,6 +596,19 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     },
                 )
                 self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=open_update)
+        else:
+            timestamp = time()
+
+            open_update = OrderUpdate(
+                trading_pair=in_flight_order.trading_pair,
+                update_timestamp=timestamp,
+                new_state=HummingBotOrderStatus.COMPLETED,
+                client_order_id=in_flight_order.client_order_id,
+                exchange_order_id=in_flight_order.exchange_order_id,
+                misc_updates={
+                },
+            )
+            self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=open_update)
 
         self.logger().debug("get_order_status_update: end")
 
@@ -677,7 +696,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return output
 
     async def check_network_status(self) -> NetworkStatus:
-        self.logger().debug("check_network_status: start")
+        # self.logger().debug("check_network_status: start")
 
         try:
             await self._gateway.ping_gateway()
@@ -690,7 +709,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             output = NetworkStatus.NOT_CONNECTED
 
-        self.logger().debug("check_network_status: end")
+        # self.logger().debug("check_network_status: end")
 
         return output
 
