@@ -158,7 +158,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 response = await self._gateway.kujira_post_orders(request)
 
-                self.logger().debug(f"""place order response:\n "{self._dump(request)}".""")
+                self.logger().debug(f"""place order response:\n "{self._dump(response)}".""")
 
                 placed_orders = list(response.values())
                 placed_order = DotMap(placed_orders[0], _dynamic=False)
