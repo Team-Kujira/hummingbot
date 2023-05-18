@@ -310,7 +310,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     )
 
                 self.logger().debug(
-                    f"""Order "{order.client_order_id}" / "{cancelled_order.id}" successfully cancelled. Transaction hash: "{cancelled_order.hashes.cancelation}"."""
+                    f"""Order "{order.client_order_id}" / "{cancelled_order.id}" successfully cancelled. Transaction hash: "{cancelled_order.hashes.cancellation}"."""
                 )
             except Exception as exception:
                 if 'No orders with the specified information exist' in str(exception.args):
