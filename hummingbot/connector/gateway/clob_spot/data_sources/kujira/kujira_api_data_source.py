@@ -3,6 +3,7 @@ from enum import Enum
 from time import time
 from typing import Any, Dict, List, Optional, Tuple
 
+import jsonpickle
 from _decimal import Decimal
 from dotmap import DotMap
 
@@ -134,7 +135,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         async with self._locks.place_order:
             try:
-                response = await self._gateway.kujira_post_orders({
+                request = {
                     "chain": self._chain,
                     "network": self._network,
                     "connector": self._connector,
@@ -151,7 +152,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                         "replaceIfExists": True,
                         "waitUntilIncludedInBlock": True
                     }]
-                })
+                }
+
+                self.logger().debug(f"""place order request:\n "{self._dump(request)}".""")
+
+                response = await self._gateway.kujira_post_orders(request)
+
+                self.logger().debug(f"""place order response:\n "{self._dump(request)}".""")
 
                 placed_orders = list(response.values())
                 placed_order = DotMap(placed_orders[0], _dynamic=False)
@@ -270,14 +277,20 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         async with self._locks.cancel_order:
             try:
-                response = await self._gateway.kujira_delete_orders({
+                request = {
                     "chain": self._chain,
                     "network": self._network,
                     "connector": self._connector,
                     "ids": [order.exchange_order_id],
                     "marketId": self._market.id,
                     "ownerAddress": self._owner_address,
-                })
+                }
+
+                self.logger().debug(f"""cancel_order request:\n "{self._dump(request)}".""")
+
+                response = await self._gateway.kujira_delete_orders(request)
+
+                self.logger().debug(f"""cancel_order response:\n "{self._dump(response)}".""")
 
                 cancelled_orders = response.values()
                 cancelled_order = DotMap(cancelled_orders[0], _dynamic=False)
@@ -382,13 +395,19 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         async with self._locks.cancel_all_orders:
             try:
-                response = await self._gateway.kujira_delete_orders_all({
+
+                request = {
                     "chain": self._chain,
                     "network": self._network,
                     "connector": self._connector,
                     "marketId": self._market.id,
                     "ownerAddress": self._owner_address,
-                })
+                }
+                self.logger().debug(f"""cancel_all_orders request:\n "{self._dump(request)}".""")
+
+                response = await self._gateway.kujira_delete_orders_all(request)
+
+                self.logger().debug(f"""cancel_all_orders response:\n "{self._dump(response)}".""")
 
                 cancelled_orders = DotMap(response, _dynamic=False)
 
@@ -786,3 +805,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     #     order_id = await order.get_exchange_order_id()
     #
     #     return order_id.lower() not in transaction.data.lower()  # TODO fix, bring data to the transaction object!!!
+
+    @staticmethod
+    def _dump(target: Any):
+        try:
+            return jsonpickle.encode(target, unpicklable=True, indent=2)
+        except (Exception,):
+            return target
