@@ -112,8 +112,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         await self._update_markets()
 
-        # await self.cancel_all_orders()
-        # await self.settle_market_funds()
+        await self.cancel_all_orders()
+        await self.settle_market_funds()
 
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
             coro=self._update_markets_loop()
@@ -130,8 +130,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self.logger().debug("place_order: start")
 
         self._check_markets_initialized() or await self._update_markets()
-
-        order.client_order_id = generate_hash(order)
 
         async with self._locks.place_order:
             try:
@@ -321,7 +319,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     transaction_hash = "0000000000000000000000000000000000000000000000000000000000000000"  # noqa: mock
                 else:
                     self.logger().debug(
-                        f"""Cancellation of order "{order.client_order_id}" / "{cancelled_order.id}" failed."""
+                        f"""Cancellation of order "{order.client_order_id}" / "{order.exchange_order_id}" failed."""
                     )
 
                     raise exception
