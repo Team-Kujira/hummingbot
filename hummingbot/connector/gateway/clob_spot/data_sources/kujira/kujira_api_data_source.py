@@ -219,12 +219,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         async with self._locks.place_orders:
             try:
-                response = await self._gateway.kujira_post_orders({
+                request = {
                     "chain": self._chain,
                     "network": self._network,
                     "connector": self._connector,
                     "orders": candidate_orders
-                })
+                }
+
+                self.logger().debug(f"""batch_order_create request:\n "{self._dump(request)}".""")
+
+                response = await self._gateway.kujira_post_orders(request)
+
+                self.logger().debug(f"""batch_order_create response:\n "{self._dump(request)}".""")
 
                 placed_orders = DotMap(response.values(), _dynamic=False)
 
@@ -345,14 +351,21 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         async with self._locks.cancel_orders:
             try:
-                response = await self._gateway.kujira_delete_orders({
+
+                request = {
                     "chain": self._chain,
                     "network": self._network,
                     "connector": self._connector,
                     "ids": ids,
                     "marketId": self._market.id,
                     "ownerAddress": self._owner_address,
-                })
+                }
+
+                self.logger().debug(f"""batch_order_cancel request:\n "{self._dump(request)}".""")
+
+                response = await self._gateway.kujira_delete_orders(request)
+
+                self.logger().debug(f"""batch_order_cancel response:\n "{self._dump(response)}".""")
 
                 cancelled_orders = DotMap(response.values(), _dynamic=False)
 
@@ -445,13 +458,19 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         async with self._locks.settle_market_funds:
             try:
-                response = await self._gateway.kujira_post_market_withdraw({
+                request = {
                     "chain": self._chain,
                     "network": self._network,
                     "connector": self._connector,
                     "marketId": self._market.id,
                     "ownerAddress": self._owner_address,
-                })
+                }
+
+                self.logger().debug(f"""settle_market_funds request:\n "{self._dump(request)}".""")
+
+                response = await self._gateway.kujira_post_market_withdraw(request)
+
+                self.logger().debug(f"""settle_market_funds response:\n "{self._dump(response)}".""")
 
                 withdraw = DotMap(response, _dynamic=False)
 
@@ -468,12 +487,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def get_last_traded_price(self, trading_pair: str) -> Decimal:
         self.logger().debug("get_last_traded_price: start")
 
-        response = await self._gateway.kujira_get_ticker({
+        request = {
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
             "marketId": self._market.id,
-        })
+        }
+
+        self.logger().debug(f"""get_last_traded_price request:\n "{self._dump(request)}".""")
+
+        response = await self._gateway.kujira_get_ticker(request)
+
+        self.logger().debug(f"""get_last_traded_price response:\n "{self._dump(response)}".""")
 
         ticker = DotMap(response, _dynamic=False)
 
@@ -486,12 +511,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def get_order_book_snapshot(self, trading_pair: str) -> OrderBookMessage:
         self.logger().debug("get_order_book_snapshot: start")
 
-        response = await self._gateway.kujira_get_order_book({
+        request = {
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
             "marketId": self._market.id,
-        })
+        }
+
+        self.logger().debug(f"""get_order_book_snapshot request:\n "{self._dump(request)}".""")
+
+        response = await self._gateway.kujira_get_order_book(request)
+
+        self.logger().debug(f"""get_order_book_snapshot response:\n "{self._dump(response)}".""")
 
         order_book = DotMap(response, _dynamic=False)
 
@@ -526,12 +557,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def get_account_balances(self) -> Dict[str, Dict[str, Decimal]]:
         self.logger().debug("get_account_balances: start")
 
-        response = await self._gateway.kujira_get_balances_all({
+        request = {
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
             "ownerAddress": self._owner_address,
-        })
+        }
+
+        self.logger().debug(f"""get_account_balances request:\n "{self._dump(request)}".""")
+
+        response = await self._gateway.kujira_get_balances_all(request)
+
+        self.logger().debug(f"""get_account_balances response:\n "{self._dump(response)}".""")
 
         balances = DotMap(response, _dynamic=False)
 
@@ -561,14 +598,20 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         await in_flight_order.get_exchange_order_id()
 
-        response = await self._gateway.kujira_get_order({
+        request = {
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
             "id": in_flight_order.exchange_order_id,
             "marketId": self._market.id,
             "ownerAddress": self._owner_address,
-        })
+        }
+
+        self.logger().debug(f"""get_order_status_update request:\n "{self._dump(request)}".""")
+
+        response = await self._gateway.kujira_get_order(request)
+
+        self.logger().debug(f"""get_order_status_update response:\n "{self._dump(response)}".""")
 
         order = DotMap(response, _dynamic=False)
 
@@ -600,7 +643,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         trade_update = None
 
-        response = await self._gateway.kujira_get_order({
+        request = {
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
@@ -608,7 +651,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "marketId": self._market.id,
             "ownerAddress": self._owner_address,
             "status": KujiraOrderStatus.FILLED.value[0]
-        })
+        }
+
+        self.logger().debug(f"""get_all_order_fills request:\n "{self._dump(request)}".""")
+
+        response = await self._gateway.kujira_get_order(request)
+
+        self.logger().debug(f"""get_all_order_fills response:\n "{self._dump(response)}".""")
 
         filled_order = DotMap(response, _dynamic=False)
 
@@ -724,9 +773,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         if self._markets_names:
             request["names"] = self._markets_names
+
+            self.logger().debug(f"""_update_markets request:\n "{self._dump(request)}".""")
+
             response = await self._gateway.kujira_get_markets(request)
+
+            self.logger().debug(f"""_update_markets response:\n "{self._dump(response)}".""")
         else:
+            self.logger().debug(f"""_update_markets request:\n "{self._dump(request)}".""")
+
             response = await self._gateway.kujira_get_markets_all(request)
+
+            self.logger().debug(f"""_update_markets response:\n "{self._dump(response)}".""")
 
         self._markets = DotMap(response, _dynamic=False)
         self._markets_name_id_map = {market.name: market.id for market in self._markets.values()}
