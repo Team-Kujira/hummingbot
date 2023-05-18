@@ -12,6 +12,7 @@ from hummingbot.connector.gateway.clob_spot.data_sources.clob_api_data_source_ba
 from hummingbot.connector.gateway.common_types import CancelOrderResult, PlaceOrderResult
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.trading_rule import TradingRule
+from hummingbot.core.data_type.cancellation_result import CancellationResult
 from hummingbot.core.data_type.common import OrderType
 from hummingbot.core.data_type.in_flight_order import OrderUpdate, TradeUpdate
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
@@ -124,6 +125,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self.logger().debug("stop: start")
         self._tasks.update_markets and self._tasks.update_markets.cancel()
         self._tasks.update_markets = None
+
+        await self.cancel_all_orders()
+        await self.settle_market_funds()
+
         self.logger().debug("stop: end")
 
     async def place_order(self, order: GatewayInFlightOrder, **kwargs) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
@@ -409,8 +414,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         return cancel_order_results
 
-    async def cancel_all_orders(self):
+    async def cancel_all_orders(self) -> List[CancellationResult]:
         self.logger().debug("cancel_all_orders: start")
+
+        self._check_markets_initialized() or await self._update_markets()
 
         async with self._locks.cancel_all_orders:
             try:
@@ -859,6 +866,9 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             await asyncio.sleep(MARKETS_UPDATE_INTERVAL)
 
             self.logger().debug("_update_markets_loop: end loop")
+
+    async def cancel_all(self, _timeout_seconds: float) -> List[CancellationResult]:
+        return await self.cancel_all_orders()
 
     # async def _check_if_order_failed_based_on_transaction(
     #     self,
