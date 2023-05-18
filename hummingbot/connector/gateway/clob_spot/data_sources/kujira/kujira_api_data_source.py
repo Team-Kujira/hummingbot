@@ -722,7 +722,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     def is_order_not_found_during_status_update_error(self, status_update_exception: Exception) -> bool:
         self.logger().debug("is_order_not_found_during_status_update_error: start")
 
-        output = str(status_update_exception).startswith("No update found for order")  # TODO is this correct?!!!
+        output = str(status_update_exception).startswith("No update found for order")
 
         self.logger().debug("is_order_not_found_during_status_update_error: end")
 
@@ -870,14 +870,14 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def cancel_all(self, _timeout_seconds: float) -> List[CancellationResult]:
         return await self.cancel_all_orders()
 
-    # async def _check_if_order_failed_based_on_transaction(
-    #     self,
-    #     transaction: Any,
-    #     order: GatewayInFlightOrder
-    # ) -> bool:
-    #     order_id = await order.get_exchange_order_id()
-    #
-    #     return order_id.lower() not in transaction.data.lower()  # TODO fix, bring data to the transaction object!!!
+    async def _check_if_order_failed_based_on_transaction(
+        self,
+        transaction: Any,
+        order: GatewayInFlightOrder
+    ) -> bool:
+        order_id = await order.get_exchange_order_id()
+
+        return order_id.lower() not in transaction.data.lower()
 
     @staticmethod
     def _dump(target: Any):
