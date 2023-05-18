@@ -317,6 +317,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     self.logger().debug(
                         f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" already cancelled."""
                     )
+
+                    transaction_hash = "0000000000000000000000000000000000000000000000000000000000000000"  # noqa: mock
                 else:
                     self.logger().debug(
                         f"""Cancellation of order "{order.client_order_id}" / "{cancelled_order.id}" failed."""
