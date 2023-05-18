@@ -13,7 +13,7 @@ from hummingbot.connector.gateway.common_types import CancelOrderResult, PlaceOr
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.trading_rule import TradingRule
 from hummingbot.core.data_type.common import OrderType
-from hummingbot.core.data_type.in_flight_order import OrderState as HummingBotOrderStatus, OrderUpdate, TradeUpdate
+from hummingbot.core.data_type.in_flight_order import OrderUpdate, TradeUpdate
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
 from hummingbot.core.data_type.trade_fee import MakerTakerExchangeFeeRates, TokenAmount, TradeFeeBase, TradeFeeSchema
 from hummingbot.core.event.events import AccountEvent, MarketEvent, OrderBookDataSourceEvent
@@ -302,7 +302,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 cancelled_order = DotMap(response, _dynamic=False)
 
-                transaction_hash = cancelled_order.hashes.creation
+                transaction_hash = cancelled_order.hashes.cancellation
 
                 if transaction_hash in (None, ""):
                     raise Exception(
@@ -600,8 +600,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def get_order_status_update(self, in_flight_order: GatewayInFlightOrder) -> OrderUpdate:
         self.logger().debug("get_order_status_update: start")
 
-        open_update = None
-
         await in_flight_order.get_exchange_order_id()
 
         request = {
@@ -623,35 +621,23 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         if order:
             order_status = KujiraOrderStatus.to_hummingbot(KujiraOrderStatus.from_name(order.status))
-
-            if in_flight_order.current_state != order_status:
-                timestamp = time()
-
-                open_update = OrderUpdate(
-                    trading_pair=in_flight_order.trading_pair,
-                    update_timestamp=timestamp,
-                    new_state=order_status,
-                    client_order_id=in_flight_order.client_order_id,
-                    exchange_order_id=in_flight_order.exchange_order_id,
-                    misc_updates={
-                        "creation_transaction_hash": in_flight_order.creation_transaction_hash,
-                        "cancelation_transaction_hash": in_flight_order.cancel_tx_hash,
-                    },
-                )
-                self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=open_update)
         else:
-            timestamp = time()
+            order_status = in_flight_order.current_state
 
-            open_update = OrderUpdate(
-                trading_pair=in_flight_order.trading_pair,
-                update_timestamp=timestamp,
-                new_state=HummingBotOrderStatus.COMPLETED,
-                client_order_id=in_flight_order.client_order_id,
-                exchange_order_id=in_flight_order.exchange_order_id,
-                misc_updates={
-                },
-            )
-            self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=open_update)
+        timestamp = time()
+
+        open_update = OrderUpdate(
+            trading_pair=in_flight_order.trading_pair,
+            update_timestamp=timestamp,
+            new_state=order_status,
+            client_order_id=in_flight_order.client_order_id,
+            exchange_order_id=in_flight_order.exchange_order_id,
+            misc_updates={
+                "creation_transaction_hash": in_flight_order.creation_transaction_hash,
+                "cancelation_transaction_hash": in_flight_order.cancel_tx_hash,
+            },
+        )
+        self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=open_update)
 
         self.logger().debug("get_order_status_update: end")
 
