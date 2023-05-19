@@ -152,8 +152,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                         "amount": str(order.amount),
                         "type": KujiraOrderType.from_hummingbot(order.order_type).value[0],
                         "payerAddress": self._payer_address,
-                        "replaceIfExists": True,
-                        "waitUntilIncludedInBlock": True
                     }]
                 }
 
@@ -214,8 +212,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 "amount": str(order_to_create.amount),
                 "type": KujiraOrderType.from_hummingbot(order_to_create.order_type).value[0],
                 "payerAddress": self._payer_address,
-                "replaceIfExists": True,
-                "waitUntilIncludedInBlock": True
             }
 
             candidate_orders.append(candidate_order)

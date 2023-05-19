@@ -688,7 +688,6 @@ class KujiraPMMExample(ScriptStrategyBase):
                         "price": str(candidate.price),
                         "amount": str(candidate.amount),
                         "type": self._configuration["strategy"].get("kujira_order_type", OrderType.LIMIT).value,
-                        "replaceIfExists": True
                     })
 
                 request = {
