@@ -15,8 +15,10 @@ import jsonpickle
 import numpy as np
 
 from hummingbot.client.hummingbot_application import HummingbotApplication
-from hummingbot.connector.gateway.clob.clob_utils import convert_order_side, convert_trading_pair
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_constants import KUJIRA_NATIVE_TOKEN
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers import (
+    convert_hb_trading_pair_to_market_name,
+)
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_types import OrderSide, OrderStatus, OrderType
 from hummingbot.connector.gateway.clob_spot.gateway_clob_spot import GatewayCLOBSPOT
 from hummingbot.core.clock import Clock
@@ -147,7 +149,7 @@ class KujiraPMMExample(ScriptStrategyBase):
             self._connector_id = next(iter(self._configuration["markets"]))
 
             self._hb_trading_pair = self._configuration["markets"][self._connector_id][0]
-            self._market_name = convert_trading_pair(self._hb_trading_pair)
+            self._market_name = convert_hb_trading_pair_to_market_name(self._hb_trading_pair)
 
             # noinspection PyTypeChecker
             # self._connector: GatewayCLOBSPOT = self.connectors[self._connector_id]
@@ -684,7 +686,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                         "clientId": candidate.client_id,
                         "marketId": self._market["id"],
                         "ownerAddress": self._owner_address,
-                        "side": convert_order_side(candidate.order_side).value[0],
+                        "side": OrderSide.from_hummingbot(candidate.order_side).value[0],
                         "price": str(candidate.price),
                         "amount": str(candidate.amount),
                         "type": self._configuration["strategy"].get("kujira_order_type", OrderType.LIMIT).value,
