@@ -1,0 +1,10 @@
+shared/client/conf
+shared/client/logs
+!shared/client/conf/connectors
+!shared/client/conf/scripts
+!shared/client/conf/strategies
+
+shared/common/certs
+
+shared/gateway/conf
+shared/gateway/logs
