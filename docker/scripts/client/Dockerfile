@@ -34,18 +34,18 @@ RUN <<-EOF
 	apt-get update
 
 	apt-get install --no-install-recommends -y \
-    ca-certificates \
-		openssh-server \
-		gcc \
-		libusb-1.0 \
-		build-essential \
-		pkg-config \
-		libusb-1.0 \
-		libsecret-1-0 \
-    libssl-dev \
-		curl \
-		python3 \
-		git
+      ca-certificates \
+      openssh-server \
+      gcc \
+      libusb-1.0 \
+      build-essential \
+      pkg-config \
+      libusb-1.0 \
+      libsecret-1-0 \
+      libssl-dev \
+      curl \
+      python3 \
+      git
 EOF
 
 # Install miniconda
