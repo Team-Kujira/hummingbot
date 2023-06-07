@@ -9,4 +9,4 @@ docker system prune -af --volumes
 docker builder prune -af
 
 echo -n -e '\e[2J\e[3J\e[1;1H'
-clear
+#clear
