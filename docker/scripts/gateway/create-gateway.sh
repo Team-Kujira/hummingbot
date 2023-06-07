@@ -8,8 +8,18 @@ echo
 echo "ℹ️  Press [ENTER] for default values:"
 echo
 
+if [ ! "$DEBUG" == "" ]
+then
+	git pull
+	docker stop temp-hb-gateway
+	docker rm temp-hb-gateway
+	docker rmi temp-hb-gateway
+	docker commit hummingbot-gateway temp-hb-gateway
+fi
+
 CUSTOMIZE=$1
 
+# Customize the Gateway image to be used?
 if [ "$CUSTOMIZE" == "--customize" ]
 then
   # Specify hummingbot image
@@ -25,7 +35,7 @@ then
     IMAGE_NAME="$RESPONSE"
   fi
 
-  # Specify hummingbot version
+  # Specify a Hummingbot version?
   RESPONSE="$TAG"
   if [ "$RESPONSE" == "" ]
   then
@@ -38,7 +48,7 @@ then
     TAG=$RESPONSE
   fi
 
-  # Ask the user if it want to create a new docker image of gateway
+  # Create a new Gateway image?
   RESPONSE="$BUILD_CACHE"
   if [ "$RESPONSE" == "" ]
   then
@@ -52,7 +62,7 @@ then
     BUILD_CACHE=""
   fi
 
-  # Ask the user for the name of the new gateway instance
+  # Create a new Gateway instance?
   RESPONSE="$INSTANCE_NAME"
   if [ "$RESPONSE" == "" ]
   then
@@ -65,7 +75,7 @@ then
     INSTANCE_NAME=$RESPONSE
   fi
 
-  # Ask the user for the folder location to save files
+  # Location to save files?
   RESPONSE="$FOLDER"
   if [ "$RESPONSE" == "" ]
   then
@@ -81,7 +91,7 @@ then
     FOLDER=$RESPONSE
   fi
 
-  # Ask the user for the exposed port of the new gateway instance
+  # Gateawu exposed port?
   RESPONSE="$PORT"
   if [ "$RESPONSE" == "" ]
   then
@@ -103,13 +113,25 @@ then
   done
   GATEWAY_PASSPHRASE=$RESPONSE
 else
-  IMAGE_NAME="hummingbot-gateway"
-  TAG="latest"
-  BUILD_CACHE="--no-cache"
-  INSTANCE_NAME="hummingbot-gateway"
-  FOLDER_SUFFIX="shared"
-  FOLDER=$PWD/$FOLDER_SUFFIX
-  PORT=15888
+	if [ ! "$DEBUG" == "" ]
+	then
+		IMAGE_NAME="temp-hb-gateway"
+		TAG="latest"
+		BUILD_CACHE="--no-cache"
+		INSTANCE_NAME="temp-hb-gateway"
+		FOLDER_SUFFIX="shared"
+		FOLDER=$PWD/$FOLDER_SUFFIX
+		PORT=15888
+		ENTRYPOINT="--entrypoint=/bin/bash"
+	else
+		IMAGE_NAME="hummingbot-gateway"
+		TAG="latest"
+		BUILD_CACHE="--no-cache"
+		INSTANCE_NAME="hummingbot-gateway"
+		FOLDER_SUFFIX="shared"
+		FOLDER=$PWD/$FOLDER_SUFFIX
+		PORT=15888
+  fi
 
   # Prompts user for a password for gateway certificates
   while [ "$GATEWAY_PASSPHRASE" == "" ]
@@ -117,11 +139,6 @@ else
     read -sp "   Define a passphrase for the Gateway certificate  >>> " GATEWAY_PASSPHRASE
     echo "   It is necessary to define a password for the certificate, which is the same as the one entered when executing the \"gateway generate-certs\" command on the client. Try again."
   done
-fi
-
-if [ ! "$DEBUG" == "" ]
-then
-  ENTRYPOINT="--entrypoint=/bin/bash"
 fi
 
 CERTS_FOLDER="$FOLDER/common/certs"

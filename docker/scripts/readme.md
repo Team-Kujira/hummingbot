@@ -1,9 +1,13 @@
 # Docker
 
 ## Hummingbot Installation Guide
+It's very recommended to watch this video from the Hummingbot Foundation and their installation guide:
  - https://www.youtube.com/watch?v=t3Su_F_SY_0
  - https://docs.hummingbot.org/installation/
  - https://docs.hummingbot.org/quickstart/
+
+## Prerequisites:
+- Docker
 
 ## Client
 
@@ -15,13 +19,13 @@ Run:
 
 to create a Client instance. Follow the instructions on the screen.
 
-Important: it is needed to be located at the scripts folders, seeing the client folder, otherwise the Dockerfile
+Important: it is needed to be located in the scripts folders, seeing the client folder, otherwise the Dockerfile
 will not be able to copy the required files.
 
 ### Configuration
 
 #### Generate Certificates
-From the Hummingbot command line type:
+From the Hummingbot Client command line type:
 
 > gateway generate-certs
 
@@ -48,10 +52,10 @@ and the informed passphrase is the correct one.
 
 ## Running
 
-All of the commands given here are for the Hummingbot Client command line.
+All the commands given here are for the Hummingbot Client command line.
 
 ### Connecting the Wallet
-Connect to the Kujira wallet with:
+Connect a Kujira wallet with:
 
 > gateway connect kujira
 
@@ -76,7 +80,7 @@ Check if the
 
 file has the appropriate configurations.
 
-After that you can start the script as the following:
+Then you can start the script as the following:
 
 > start --script kujira_pmm_script_example.py
 
@@ -85,6 +89,11 @@ After that the PMM script will start to run.
 It is possible to check the logs on the right side of the Client screen or by the command line with:
 
 > tail -f shared/client/logs/* shared/gateway/logs/*
+
+It's also a good idea to check from the Kujira Fin app if the orders are being created and replaced there
+(make sure you're checking the correct RPC and network (mainnet or testnet)):
+
+> https://fin.kujira.app/
 
 ## Running a PMM Strategy
 
@@ -109,4 +118,8 @@ After that the PMM strategy will start to run.
 It is possible to check the logs on the right side of the Client screen or by the command line with:
 
 > tail -f shared/client/logs/* shared/gateway/logs/*
-> 
+
+It's also a good idea to check from the Kujira Fin app if the orders are being created and replaced there
+(make sure you're checking the correct RPC and network (mainnet or testnet)):
+
+> https://fin.kujira.app/

@@ -8,11 +8,20 @@ echo
 echo "ℹ️  Press [ENTER] for default values:"
 echo
 
+if [ ! "$DEBUG" == "" ]
+then
+  git pull
+	docker stop temp-hb-client
+	docker rm temp-hb-client
+	docker rmi temp-hb-client
+	docker commit hummingbot-client temp-hb-client
+fi
+
 CUSTOMIZE=$1
 
+# Customize the Client image to be used?
 if [ "$CUSTOMIZE" == "--customize" ]
 then
-  # Specify hummingbot image
   RESPONSE="$IMAGE_NAME"
   if [ "$RESPONSE" == "" ]
   then
@@ -25,7 +34,7 @@ then
     IMAGE_NAME="$RESPONSE"
   fi
 
-  # Specify hummingbot version
+  # Specify a Hummingbot version?
   RESPONSE="$TAG"
   if [ "$RESPONSE" == "" ]
   then
@@ -38,7 +47,7 @@ then
     TAG=$RESPONSE
   fi
 
-  # Ask the user if it want to create a new docker image of client
+  # Create a new Client image?
   RESPONSE="$BUILD_CACHE"
   if [ "$RESPONSE" == "" ]
   then
@@ -52,7 +61,7 @@ then
     BUILD_CACHE=""
   fi
 
-  # Ask the user for the name of the new client instance
+  # Create a new Client instance?
   RESPONSE="$INSTANCE_NAME"
   if [ "$RESPONSE" == "" ]
   then
@@ -65,7 +74,7 @@ then
     INSTANCE_NAME=$RESPONSE
   fi
 
-  # Ask the user for the folder location to save files
+  # Location to save files?
   RESPONSE="$FOLDER"
   if [ "$RESPONSE" == "" ]
   then
@@ -81,17 +90,23 @@ then
     FOLDER=$RESPONSE
   fi
 else
-  IMAGE_NAME="hummingbot-client"
-  TAG="latest"
-  BUILD_CACHE="--no-cache"
-  INSTANCE_NAME="hummingbot-client"
-  FOLDER_SUFFIX="shared"
-  FOLDER=$PWD/$FOLDER_SUFFIX
-fi
-
-if [ ! "$DEBUG" == "" ]
-then
-  ENTRYPOINT="--entrypoint=/bin/bash"
+	if [ ! "$DEBUG" == "" ]
+	then
+		IMAGE_NAME="temp-hb-client"
+		TAG="latest"
+		BUILD_CACHE="--no-cache"
+		INSTANCE_NAME="temp-hb-client"
+		FOLDER_SUFFIX="shared"
+		FOLDER=$PWD/$FOLDER_SUFFIX
+		ENTRYPOINT="--entrypoint=/bin/bash"
+	else
+		IMAGE_NAME="hummingbot-client"
+		TAG="latest"
+		BUILD_CACHE="--no-cache"
+		INSTANCE_NAME="hummingbot-client"
+		FOLDER_SUFFIX="shared"
+		FOLDER=$PWD/$FOLDER_SUFFIX
+	fi
 fi
 
 CONF_FOLDER="$FOLDER/client/conf"

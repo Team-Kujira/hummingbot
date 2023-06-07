@@ -1,10 +1,20 @@
-shared/client/conf
-shared/client/logs
+# Client
+shared/client/conf/**
 !shared/client/conf/connectors
-!shared/client/conf/scripts
 !shared/client/conf/strategies
 
-shared/common/certs
+shared/client/logs/**
+!shared/client/logs/.keep
 
-shared/gateway/conf
-shared/gateway/logs
+shared/client/data/**
+!shared/client/data/.keep
+
+# Common
+shared/common/certs/**
+
+# Gateway
+shared/gateway/conf/**
+!shared/gateway/conf/.keep
+
+shared/gateway/logs/**
+!shared/gateway/logs/.keep

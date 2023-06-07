@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Careful! This will destroy all containers and images!
+# Careful! This scipt will destroy all containers and images!
 
 docker kill $(docker ps -q)
 docker rm $(docker ps -a -q)
