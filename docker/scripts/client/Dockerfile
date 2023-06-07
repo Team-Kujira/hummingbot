@@ -118,7 +118,7 @@ RUN <<-EOF
 EOF
 
 # COPY . .
-RUN git clone -b development https://github.com/Team-Kujira/client.git
+RUN git clone -b development https://github.com/Team-Kujira/hummingbot.git .
 
 # ./install | create hummingbot environment
 RUN <<-EOF

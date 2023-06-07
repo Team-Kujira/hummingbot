@@ -32,7 +32,7 @@ RUN \
 
 # COPY . .
 
-RUN git clone -b development https://github.com/Team-Kujira/gateway.git
+RUN git clone -b development https://github.com/Team-Kujira/gateway.git .
 
 EXPOSE 15888
 
