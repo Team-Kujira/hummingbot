@@ -117,7 +117,8 @@ RUN <<-EOF
   rm -rf /root/.cache
 EOF
 
-COPY . .
+# COPY . .
+RUN git clone -b development https://github.com/Team-Kujira/client.git
 
 # ./install | create hummingbot environment
 RUN <<-EOF

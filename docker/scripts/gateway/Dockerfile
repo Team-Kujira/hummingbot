@@ -30,7 +30,9 @@ RUN \
 		openssh-server \
 		git
 
-COPY . .
+# COPY . .
+
+RUN git clone -b development https://github.com/Team-Kujira/gateway.git
 
 EXPOSE 15888
 
