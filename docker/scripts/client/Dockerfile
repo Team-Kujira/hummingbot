@@ -100,6 +100,9 @@ RUN <<-EOF
 	rm "/root/miniconda.$MINICONDA_EXTENSION"
 	/root/miniconda3/bin/conda update -n base conda -y
 	/root/miniconda3/bin/conda clean -tipy
+
+	echo "export MINICONDA_VERSION=$MINICONDA_VERSION" >> /root/.bashrc
+	echo "export MINICONDA_URL=$MINICONDA_URL" >> /root/.bashrc
 EOF
 
 # Install nvm and CeloCLI; note: nvm adds own section to /root/.bashrc
