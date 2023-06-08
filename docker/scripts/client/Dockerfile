@@ -132,7 +132,6 @@ EOF
 
 # ./install | create hummingbot environment
 RUN <<-EOF
-	ls -la
 	MINICONDA_ENVIRONMENT=$(head -1 /root/setup/environment.yml | cut -d' ' -f2)
 	if [ -z "$MINICONDA_ENVIRONMENT" ]
 	then
