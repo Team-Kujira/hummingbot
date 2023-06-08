@@ -31,7 +31,7 @@ RUN \
 		git
 
 RUN <<-EOF
-	git clone -b development https://github.com/Team-Kujira.git temporary
+	git clone -b development https://github.com/Team-Kujira/gateway.git temporary
 	mv temporary/* .
 	rm -rf temporary
 EOF
