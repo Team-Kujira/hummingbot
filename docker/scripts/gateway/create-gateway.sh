@@ -142,8 +142,8 @@ else
 fi
 
 CERTS_FOLDER="$FOLDER/common/certs"
-GATEWAY_CONF_FOLDER="$FOLDER/gateway/conf"
-GATEWAY_LOGS_FOLDER="$FOLDER/gateway/logs"
+CONF_FOLDER="$FOLDER/gateway/conf"
+LOGS_FOLDER="$FOLDER/gateway/logs"
 
 echo
 echo "ℹ️  Confirm below if the instance and its folders are correct:"
@@ -151,10 +151,10 @@ echo
 printf "%30s %5s\n" "Instance name:" "$INSTANCE_NAME"
 printf "%30s %5s\n" "Version:" "hummingbot/hummingbot:$TAG"
 echo
-printf "%30s %5s\n" "Main folder path:" "$FOLDER"
+printf "%30s %5s\n" "Main folder:" "$FOLDER"
 printf "%30s %5s\n" "Cert files:" "├── $CERTS_FOLDER"
-printf "%30s %5s\n" "Gateway config files:" "└── $GATEWAY_CONF_FOLDER"
-printf "%30s %5s\n" "Gateway log files:" "└── $GATEWAY_LOGS_FOLDER"
+printf "%30s %5s\n" "Gateway config files:" "└── $CONF_FOLDER"
+printf "%30s %5s\n" "Gateway log files:" "└── $LOGS_FOLDER"
 printf "%30s %5s\n" "Gateway exposed port:" "└── $PORT"
 echo
 
@@ -176,11 +176,11 @@ create_instance () {
   mkdir -p $FOLDER
   # 2) Create subfolders for hummingbot files
   mkdir -p $CERTS_FOLDER
-  mkdir -p $GATEWAY_CONF_FOLDER
-  mkdir -p $GATEWAY_LOGS_FOLDER
+  mkdir -p $CONF_FOLDER
+  mkdir -p $LOGS_FOLDER
 
   # 3) Set required permissions to save hummingbot password the first time
-  chmod a+rw $GATEWAY_CONF_FOLDER
+  chmod a+rw $CONF_FOLDER
 
   # 4) Create a new image for gateway
   BUILT=true
@@ -197,13 +197,13 @@ create_instance () {
     -p $PORT:15888 \
     --name $INSTANCE_NAME \
     --network host \
-    --mount type=bind,source=$CERTS_FOLDER,target=/root/.hummingbot-gateway/certs \
-    --mount type=bind,source=$GATEWAY_CONF_FOLDER,target=/root/gateway/conf \
-    --mount type=bind,source=$GATEWAY_LOGS_FOLDER,target=/root/gateway/logs \
+    --mount type=bind,source=$CERTS_FOLDER,target=/root/certs \
+    --mount type=bind,source=$CONF_FOLDER,target=/root/conf \
+    --mount type=bind,source=$LOGS_FOLDER,target=/root/logs \
     --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock \
-    -e CERTS_FOLDER="/root/.hummingbot-gateway/certs" \
-    -e GATEWAY_CONF_FOLDER="/root/gateway/conf" \
-    -e GATEWAY_LOGS_FOLDER="/root/gateway/logs" \
+    -e CERTS_FOLDER="/root/certs" \
+    -e CONF_FOLDER="/root/conf" \
+    -e LOGS_FOLDER="/root/logs" \
     -e GATEWAY_PASSPHRASE="$GATEWAY_PASSPHRASE" \
     $ENTRYPOINT \
     $IMAGE_NAME:$TAG
