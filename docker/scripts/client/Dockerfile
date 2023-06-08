@@ -125,7 +125,7 @@ EOF
 
 RUN <<-EOF
 	git clone -b development https://github.com/Team-Kujira/hummingbot.git temporary
-	mv temporary/* .
+	cp -r temporary/* .
 	rm -rf temporary
 EOF
 # COPY . .
@@ -134,7 +134,13 @@ EOF
 RUN <<-EOF
 	/root/miniconda3/bin/conda env create -f /root/setup/environment.yml
 	/root/miniconda3/bin/conda clean -tipy
-	echo "export MINICONDA_ENVIRONMENT=$(head -1 /root/setup/environment.yml | cut -d' ' -f2)" >> /root/.bashrc
+	MINICONDA_ENVIRONMENT=$(head -1 /root/setup/environment.yml | cut -d' ' -f2)
+	if [ -z "$MINICONDA_ENVIRONMENT" ]
+	then
+		echo "The MINICONDA_ENVIRONMENT environment variable could not be defined."
+		exit 1
+	fi
+	echo "export MINICONDA_ENVIRONMENT=$MINICONDA_ENVIRONMENT" >> /root/.bashrc
 	rm -rf /root/.cache
 EOF
 
@@ -150,6 +156,7 @@ EOF
 
 RUN <<-EOF
 	mkdir -p \
+	/root/certs \
 	/root/conf/connectors \
 	/root/conf/strategies \
 	/root/conf/scripts \
@@ -157,12 +164,6 @@ RUN <<-EOF
 	/root/data \
 	/root/scripts \
 	/root/pmm_scripts \
-	/root/gateway/db \
-	/root/gateway/gateway.level \
-	/root/gateway/transactions.level \
-	/root/gateway/conf \
-	/root/gateway/logs \
-	/root/.hummingbot-gateway/certs \
 	/var/lib/gateway
 EOF
 

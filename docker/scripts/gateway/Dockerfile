@@ -32,7 +32,7 @@ RUN \
 
 RUN <<-EOF
 	git clone -b development https://github.com/Team-Kujira/gateway.git temporary
-	mv temporary/* .
+	cp -r temporary/* .
 	rm -rf temporary
 EOF
 # COPY . .
@@ -41,20 +41,13 @@ EXPOSE 15888
 
 RUN \
 	mkdir -p \
-	/root/db \
-	/root/logs \
-	/root.level \
-	/root/transactions.level \
-	/root/logs \
-	/root/conf \
-	/root/.hummingbot-gateway/conf \
-	/root/.hummingbot-gateway/certs \
-	/root/.hummingbot-gateway/logs \
-	/var/lib
+		/root/certs \
+		/root/db \
+		/root/conf \
+		/root/logs \
+		/var/lib
 
 RUN cp -R /root/src/templates/* /root/conf/
-
-WORKDIR /root
 
 RUN yarn
 RUN yarn build
