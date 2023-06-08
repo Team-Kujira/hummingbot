@@ -132,8 +132,7 @@ EOF
 
 # ./install | create hummingbot environment
 RUN <<-EOF
-	/root/miniconda3/bin/conda env create -f /root/setup/environment.yml
-	/root/miniconda3/bin/conda clean -tipy
+	ls -la
 	MINICONDA_ENVIRONMENT=$(head -1 /root/setup/environment.yml | cut -d' ' -f2)
 	if [ -z "$MINICONDA_ENVIRONMENT" ]
 	then
@@ -141,6 +140,9 @@ RUN <<-EOF
 		exit 1
 	fi
 	echo "export MINICONDA_ENVIRONMENT=$MINICONDA_ENVIRONMENT" >> /root/.bashrc
+
+	/root/miniconda3/bin/conda env create -f /root/setup/environment.yml
+	/root/miniconda3/bin/conda clean -tipy
 	rm -rf /root/.cache
 EOF
 
