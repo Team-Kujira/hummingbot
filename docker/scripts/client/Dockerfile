@@ -34,18 +34,18 @@ RUN <<-EOF
 	apt-get update
 
 	apt-get install --no-install-recommends -y \
-      ca-certificates \
-      openssh-server \
-      gcc \
-      libusb-1.0 \
-      build-essential \
-      pkg-config \
-      libusb-1.0 \
-      libsecret-1-0 \
-      libssl-dev \
-      curl \
-      python3 \
-      git
+		ca-certificates \
+		openssh-server \
+		gcc \
+		libusb-1.0 \
+		build-essential \
+		pkg-config \
+		libusb-1.0 \
+		libsecret-1-0 \
+		libssl-dev \
+		curl \
+		python3 \
+		git
 EOF
 
 # Install miniconda
@@ -56,13 +56,13 @@ RUN <<-EOF
 		linux*)
 			OS="Linux"
 			FILE_EXTENSION="sh"
-			case $(uname -r  | tr '[:upper:]' '[:lower:]') in
-				*raspi*)
-					IS_RASPBERRY="TRUE"
-					;;
-				*)
-					IS_RASPBERRY="FALSE"
-					;;
+			case $(uname -r	| tr '[:upper:]' '[:lower:]') in
+			*raspi*)
+				IS_RASPBERRY="TRUE"
+				;;
+			*)
+				IS_RASPBERRY="FALSE"
+				;;
 			esac
 			;;
 		darwin*)
@@ -80,10 +80,13 @@ RUN <<-EOF
 	esac
 
 	echo "export ARCHITECTURE=$ARCHITECTURE" >> /root/.bashrc
+	echo "export OS=$OS" >> /root/.bashrc
+	echo "export FILE_EXTENSION=$FILE_EXTENSION" >> /root/.bashrc
+	echo "export IS_RASPBERRY=$IS_RASPBERRY" >> /root/.bashrc
 
 	if [ "$ARCHITECTURE" == "aarch64" ]
 	then
-    echo "export ARCHITECTURE_SUFFIX=\"-$ARCHITECTURE\"" >> /root/.bashrc
+		echo "export ARCHITECTURE_SUFFIX=\"-$ARCHITECTURE\"" >> /root/.bashrc
 		MINICONDA_VERSION="Mambaforge-$(uname)-$(uname -m).sh"
 		MINICONDA_URL="https://github.com/conda-forge/miniforge/releases/latest/download/$MINICONDA_VERSION"
 		ln -s /root/mambaforge /root/miniconda3
@@ -109,22 +112,26 @@ RUN <<-EOF
 
 	if [ ! "$ARCHITECTURE" == "aarch64" ]
 	then
-    npm install --unsafe-perm --only=production -g @celo/celocli@1.0.3
-  fi
+		npm install --unsafe-perm --only=production -g @celo/celocli@1.0.3
+	fi
 
-  nvm cache clear
+	nvm cache clear
 	npm cache clean --force
-  rm -rf /root/.cache
+	rm -rf /root/.cache
 EOF
 
+RUN <<-EOF
+	git clone -b development https://github.com/Team-Kujira/hummingbot.git temporary
+	mv temporary/* .
+	rm -rf temporary
+EOF
 # COPY . .
-RUN git clone --force -b development https://github.com/Team-Kujira/hummingbot.git .
 
 # ./install | create hummingbot environment
 RUN <<-EOF
-  /root/miniconda3/bin/conda env create -f /root/setup/environment-linux$ARCHITECTURE_SUFFIX.yml
+	/root/miniconda3/bin/conda env create -f /root/setup/environment.yml
 	/root/miniconda3/bin/conda clean -tipy
-  echo "export MINICONDA_ENVIRONMENT=$(head -1 /root/setup/environment-linux$ARCHITECTURE_SUFFIX.yml | cut -d' ' -f2)" >> /root/.bashrc
+	echo "export MINICONDA_ENVIRONMENT=$(head -1 /root/setup/environment.yml | cut -d' ' -f2)" >> /root/.bashrc
 	rm -rf /root/.cache
 EOF
 

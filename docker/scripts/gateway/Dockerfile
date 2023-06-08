@@ -30,9 +30,12 @@ RUN \
 		openssh-server \
 		git
 
+RUN <<-EOF
+	git clone -b development https://github.com/Team-Kujira/gateway.git temporary
+	mv temporary/* .
+	rm -rf temporary
+EOF
 # COPY . .
-
-RUN git clone --force -b development https://github.com/Team-Kujira/gateway.git .
 
 EXPOSE 15888
 
