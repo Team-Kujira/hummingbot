@@ -177,4 +177,4 @@ EOF
 #		/etc/apt/sources.list.d/*
 #EOF
 
-CMD /root/miniconda3/envs/$MINICONDA_ENVIRONMENT/bin/python3 /root/bin/hummingbot_quickstart.py
+CMD /root/miniconda3/envs/hummingbot/bin/python3 /root/bin/hummingbot_quickstart.py
