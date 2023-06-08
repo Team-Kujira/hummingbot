@@ -48,6 +48,13 @@ RUN <<-EOF
 		git
 EOF
 
+RUN <<-EOF
+	git clone -b development https://github.com/Team-Kujira/hummingbot.git temporary
+	cp -r temporary/* .
+	rm -rf temporary
+EOF
+# COPY . .
+
 # Install miniconda
 RUN <<-EOF
 	ARCHITECTURE="$(uname -m)"
@@ -122,13 +129,6 @@ RUN <<-EOF
 	npm cache clean --force
 	rm -rf /root/.cache
 EOF
-
-RUN <<-EOF
-	git clone -b development https://github.com/Team-Kujira/hummingbot.git temporary
-	cp -r temporary/* .
-	rm -rf temporary
-EOF
-# COPY . .
 
 # ./install | create hummingbot environment
 RUN <<-EOF
