@@ -10,7 +10,6 @@ echo
 
 if [ ! "$DEBUG" == "" ]
 then
-	git pull
 	docker stop temp-hb-gateway
 	docker rm temp-hb-gateway
 	docker rmi temp-hb-gateway
