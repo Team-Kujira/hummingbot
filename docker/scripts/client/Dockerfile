@@ -52,7 +52,6 @@ RUN <<-EOF
 	git clone -b development https://github.com/Team-Kujira/hummingbot.git temporary
 	cp -r temporary/* .
 	rm -rf temporary
-	ls -la
 EOF
 # COPY . .
 
