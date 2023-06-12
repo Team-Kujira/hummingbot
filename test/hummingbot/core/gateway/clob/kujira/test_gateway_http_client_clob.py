@@ -27,7 +27,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        cls._db_path = realpath(join(__file__, "../fixtures/gateway_http_client_clob_fixture.db"))
+        cls._db_path = realpath(join(__file__, "../../../fixtures/gateway_http_client_clob_fixture.db"))
         cls._http_player = HttpPlayer(cls._db_path)
         cls._patch_stack = ExitStack()
         cls._patch_stack.enter_context(cls._http_player.patch_aiohttp_client())
