@@ -37,7 +37,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
                 return_value=ClientSession(),
             )
         )
-        GatewayHttpClient.get_instance().base_url = "https://localhost:5000"
+        GatewayHttpClient.get_instance().base_url = "https://localhost:15888"
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -49,18 +49,26 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
             connector="kujira",
             chain="kujira",
             network="mainnet",
-            trading_pair=combine_to_hb_trading_pair(base="COIN", quote="ALPHA"),
-            address="0xc7287236f64484b476cfbec0fd21bc49d85f8850c8885665003928a122041e18",  # noqa: mock
+            trading_pair=combine_to_hb_trading_pair(base="KUJI", quote="DEMO"),
+            address="kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7",  # noqa: mock
             trade_type=TradeType.BUY,
             order_type=OrderType.LIMIT,
-            price=Decimal("10"),
-            size=Decimal("2"),
+            price=Decimal("0.001"),
+            size=Decimal("100"),
         )
-
-        self.assertEqual("mainnet", result["network"])
-        self.assertEqual(1647066435595, result["timestamp"])
-        self.assertEqual(2, result["latency"])
-        self.assertEqual("0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf", result["txHash"])  # noqa: mock
+        # expect(responseBody.hashes?.creation?.length).toBeCloseTo(64);
+        self.assertGreater(Decimal(result["id"]), 0)
+        self.assertEquals(result["marketId"], "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh")
+        self.assertEqual(result["ownerAddress"], "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7")
+        self.assertEqual(result["price"], "0.001")
+        self.assertEqual(result["amount"], "100")
+        self.assertEqual(result["amount"], "100")
+        self.assertEqual(result["side"], "BUY")
+        self.assertEqual(result["marketName"], "KUJI/DEMO")
+        self.assertEqual(result["payerAddress"], "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7")
+        self.assertEqual(result["status"], "OPEN")
+        self.assertEqual(result["type"], "LIMIT")
+        self.assertEqual(len(result["hashes"]["creation"]), 64)
 
     @async_test(loop=ev_loop)
     async def test_clob_cancel_order(self):
@@ -107,7 +115,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
     @async_test(loop=ev_loop)
     async def test_get_clob_all_markets(self):
         result = await GatewayHttpClient.get_instance().get_clob_markets(
-            connector="dexalot", chain="avalanche", network="mainnet"
+            connector="kujira", chain="kujira", network="mainnet"
         )
 
         self.assertEqual(2, len(result["markets"]))
@@ -116,7 +124,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
     @async_test(loop=ev_loop)
     async def test_get_clob_single_market(self):
         result = await GatewayHttpClient.get_instance().get_clob_markets(
-            connector="dexalot", chain="avalanche", network="mainnet", trading_pair="COIN-ALPHA"
+            connector="kujira", chain="kujira", network="mainnet", trading_pair="COIN-ALPHA"
         )
 
         self.assertEqual(1, len(result["markets"]))
@@ -125,7 +133,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
     @async_test(loop=ev_loop)
     async def test_get_clob_orderbook(self):
         result = await GatewayHttpClient.get_instance().get_clob_orderbook_snapshot(
-            trading_pair="COIN-ALPHA", connector="dexalot", chain="avalanche", network="mainnet"
+            trading_pair="COIN-ALPHA", connector="kujira", chain="kujira", network="mainnet"
         )
 
         expected_orderbook = {
@@ -137,7 +145,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
     @async_test(loop=ev_loop)
     async def test_get_clob_ticker(self):
         result = await GatewayHttpClient.get_instance().get_clob_ticker(
-            connector="dexalot", chain="avalanche", network="mainnet"
+            connector="kujira", chain="kujira", network="mainnet"
         )
         expected_markets = [
             {
@@ -153,7 +161,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
         self.assertEqual(expected_markets, result["markets"])
 
         result = await GatewayHttpClient.get_instance().get_clob_ticker(
-            connector="dexalot", chain="avalanche", network="mainnet", trading_pair="COIN-ALPHA"
+            connector="kujira", chain="", network="mainnet", trading_pair="COIN-ALPHA"
         )
         expected_markets = [
             {
