@@ -56,7 +56,6 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
             price=Decimal("0.001"),
             size=Decimal("100"),
         )
-        # expect(responseBody.hashes?.creation?.length).toBeCloseTo(64);
         self.assertGreater(Decimal(result["id"]), 0)
         self.assertEquals(result["marketId"], "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh")
         self.assertEqual(result["ownerAddress"], "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7")
@@ -75,10 +74,10 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
         result: Dict[str, Any] = await GatewayHttpClient.get_instance().clob_cancel_order(
             connector="kujira",
             chain="kujira",
-            network="mainnet",
-            trading_pair=combine_to_hb_trading_pair(base="COIN", quote="ALPHA"),
-            address="0xc7287236f64484b476cfbec0fd21bc49d85f8850c8885665003928a122041e18",  # noqa: mock
-            exchange_order_id="0x66b533792f45780fc38573bfd60d6043ab266471607848fb71284cd0d9eecff9",  # noqa: mock
+            network="testnet",
+            trading_pair=combine_to_hb_trading_pair(base="KUJI", quote="DEMO"),
+            address="kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7",  # noqa: mock
+            exchange_order_id="198462",  # noqa: mock
         )
 
         self.assertEqual("mainnet", result["network"])
