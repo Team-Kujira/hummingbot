@@ -2,6 +2,7 @@
 shared/client/conf/**
 !shared/client/conf/connectors
 !shared/client/conf/strategies
+!/shared/client/conf/strategies/kujira_pmm_strategy_example.yml
 
 shared/client/logs/**
 !shared/client/logs/.keep
