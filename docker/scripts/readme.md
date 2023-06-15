@@ -72,6 +72,37 @@ for the target market. For example, if the market is DEMO-USK, it is needed to h
 amount in DEMO and USK tokens. Also, it is needed to have a minimum amount of KUJI tokens
 to pay the transaction fees.
 
+### Adding funds to a Testnet Wallet (optional)
+
+In order to add funds to your wallet, you can use a faucet inside the Kujira Discord.
+
+To join their discord you can use this link:
+
+> https://discord.gg/teamkujira
+
+After joining and doing their verification process, you can look for this channel:
+
+> #public-testnet-faucet
+
+Or try this link:
+
+> https://discord.com/channels/970650215801569330/1009931570263629854
+
+Then you can use the following command there:
+
+> !faucet <change to your kujira wallet address here>
+
+After that you should receive some Kujira tokens on your balance.
+
+### How to use Testnet instead of Mainnet? (optional)
+
+If you would like to start with testnet, which is the recommended, instead of mainnet, 
+you can change this configuration in this file below:
+
+> shared/gateway/conf/kujira.yml
+
+You can also use your preferred RPC if you want.
+
 ### Running a PMM Script
 
 Check if the
