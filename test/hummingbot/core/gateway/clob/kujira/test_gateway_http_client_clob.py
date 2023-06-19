@@ -45,45 +45,57 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
 
     @async_test(loop=ev_loop)
     async def test_clob_place_order(self):
-        result: Dict[str, Any] = await GatewayHttpClient.get_instance().clob_place_order(
-            connector="kujira",
-            chain="kujira",
-            network="mainnet",
-            trading_pair=combine_to_hb_trading_pair(base="KUJI", quote="DEMO"),
-            address="kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7",  # noqa: mock
-            trade_type=TradeType.BUY,
-            order_type=OrderType.LIMIT,
-            price=Decimal("0.001"),
-            size=Decimal("100"),
-        )
+
+        payload = {
+            "connector": "kujira",
+            "chain": "kujira",
+            "network": "testnet",
+            "marketId": "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh",
+            "ownerAddress": "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7",
+            "side": "BUY",
+            "price": 0.001,
+            "amount": 1.0,
+            "type": "LIMIT",
+            "payerAddress": "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7"
+        }
+
+        result: Dict[str, Any] = await GatewayHttpClient.get_instance().kujira_post_order(payload=payload)
+
         self.assertGreater(Decimal(result["id"]), 0)
+        self.assertEqual(result["marketName"], "KUJI/DEMO")
         self.assertEquals(result["marketId"], "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh")
         self.assertEqual(result["ownerAddress"], "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7")
+        self.assertEqual(result["payerAddress"], "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7")
         self.assertEqual(result["price"], "0.001")
         self.assertEqual(result["amount"], "100")
-        self.assertEqual(result["amount"], "100")
         self.assertEqual(result["side"], "BUY")
-        self.assertEqual(result["marketName"], "KUJI/DEMO")
-        self.assertEqual(result["payerAddress"], "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7")
         self.assertEqual(result["status"], "OPEN")
         self.assertEqual(result["type"], "LIMIT")
+        self.assertGreater(Decimal(result["fee"]), 0)
         self.assertEqual(len(result["hashes"]["creation"]), 64)
 
     @async_test(loop=ev_loop)
     async def test_clob_cancel_order(self):
-        result: Dict[str, Any] = await GatewayHttpClient.get_instance().clob_cancel_order(
-            connector="kujira",
-            chain="kujira",
-            network="testnet",
-            trading_pair=combine_to_hb_trading_pair(base="KUJI", quote="DEMO"),
-            address="kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7",  # noqa: mock
-            exchange_order_id="198462",  # noqa: mock
-        )
+        payload = {
+            "connector": "kujira",
+            "chain": "kujira",
+            "network": "testnet",
+            "id": "198462",
+            "ownerAddress": "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7",
+            "marketId": "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh"
+        }
 
-        self.assertEqual("mainnet", result["network"])
-        self.assertEqual(1647066436595, result["timestamp"])
-        self.assertEqual(2, result["latency"])
-        self.assertEqual("0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf", result["txHash"])  # noqa: mock
+        result = await GatewayHttpClient.get_instance().kujira_delete_order(payload=payload)
+
+        self.assertGreater(len(result["id"]), 0)
+        self.assertEqual(result["market"]["name"], "KUJI/DEMO")
+        self.assertEquals(result["marketId"], "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh")
+        self.assertEqual(result["ownerAddress"], "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7")
+        self.assertEqual(result["payerAddress"], "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7")
+        self.assertEqual(result["status"], "CANCELLED")
+        self.assertEqual(result["type"], "LIMIT")
+        self.assertGreater(Decimal(result["fee"]), 0)
+        self.assertEqual(len(result["hashes"]["cancellation"]), 64)
 
     @async_test(loop=ev_loop)
     async def test_clob_order_status_updates(self):
