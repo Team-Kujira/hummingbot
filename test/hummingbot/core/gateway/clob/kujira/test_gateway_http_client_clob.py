@@ -44,8 +44,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
         cls._patch_stack.close()
 
     @async_test(loop=ev_loop)
-    async def test_clob_place_order(self):
-
+    async def test_kujira_place_order(self):
         payload = {
             "connector": "kujira",
             "chain": "kujira",
@@ -75,7 +74,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
         self.assertEqual(len(result["hashes"]["creation"]), 64)
 
     @async_test(loop=ev_loop)
-    async def test_clob_cancel_order(self):
+    async def test_kujira_cancel_order(self):
         payload = {
             "connector": "kujira",
             "chain": "kujira",
@@ -98,63 +97,69 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
         self.assertEqual(len(result["hashes"]["cancellation"]), 64)
 
     @async_test(loop=ev_loop)
-    async def test_clob_order_status_updates(self):
-        result = await GatewayHttpClient.get_instance().get_clob_order_status_updates(
-            trading_pair="COIN-ALPHA",
-            chain="kujira",
-            network="mainnet",
-            connector="kujira",
-            address="0xc7287236f64484b476cfbec0fd21bc49d85f8850c8885665003928a122041e18",  # noqa: mock
-        )
-
-        self.assertEqual(2, len(result["orders"]))
-        self.assertEqual("EOID1", result["orders"][0]["exchangeID"])
-        self.assertEqual("EOID2", result["orders"][1]["exchangeID"])
-
-        result = await GatewayHttpClient.get_instance().get_clob_order_status_updates(
-            trading_pair="COIN-ALPHA",
-            chain="kujira",
-            network="mainnet",
-            connector="kujira",
-            address="0xc7287236f64484b476cfbec0fd21bc49d85f8850c8885665003928a122041e18",  # noqa: mock
-            exchange_order_id="0x66b533792f45780fc38573bfd60d6043ab266471607848fb71284cd0d9eecff9",  # noqa: mock
-        )
-
-        self.assertEqual(1, len(result["orders"]))
-        self.assertEqual("EOID1", result["orders"][0]["exchangeID"])
-
-    @async_test(loop=ev_loop)
-    async def test_get_clob_all_markets(self):
-        result = await GatewayHttpClient.get_instance().get_clob_markets(
-            connector="kujira", chain="kujira", network="mainnet"
-        )
-
-        self.assertEqual(2, len(result["markets"]))
-        self.assertEqual("COIN-ALPHA", result["markets"][1]["tradingPair"])
-
-    @async_test(loop=ev_loop)
-    async def test_get_clob_single_market(self):
-        result = await GatewayHttpClient.get_instance().get_clob_markets(
-            connector="kujira", chain="kujira", network="mainnet", trading_pair="COIN-ALPHA"
-        )
-
-        self.assertEqual(1, len(result["markets"]))
-        self.assertEqual("COIN-ALPHA", result["markets"][0]["tradingPair"])
-
-    @async_test(loop=ev_loop)
-    async def test_get_clob_orderbook(self):
-        result = await GatewayHttpClient.get_instance().get_clob_orderbook_snapshot(
-            trading_pair="COIN-ALPHA", connector="kujira", chain="kujira", network="mainnet"
-        )
-
-        expected_orderbook = {
-            "bids": [[1, 2], [3, 4]],
-            "asks": [[5, 6]],
+    async def test_kujira_get_order_status_update(self):
+        payload = {
+            "connector": "kujira",
+            "chain": "kujira",
+            "network": "testnet",
+            "id": "198462",
+            "ownerAddress": "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7"
         }
-        self.assertEqual(expected_orderbook, result["orderbook"])
+
+        result = await GatewayHttpClient.get_instance().kujira_get_order(payload=payload)
+
+        self.assertGreater(len(result["id"]), 0)
+        self.assertEqual(result["market"]["name"], "KUJI/DEMO")
+        self.assertEquals(result["marketId"], "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh")
+        self.assertEqual(result["ownerAddress"], "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7")
+        self.assertEqual(result["payerAddress"], "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7")
+        self.assertEqual(result["status"], "OPEN")
+        self.assertEqual(result["type"], "LIMIT")
+        self.assertGreater(result["creationTimestamp"], 0)
+        self.assertEqual(result["connectorOrder"]["original_offer_amount"], "100000000")
 
     @async_test(loop=ev_loop)
-    async def test_get_clob_ticker(self):
+    async def test_kujira_get_market(self):
+        payload = {
+            "chain": "kujira",
+            "network": "testnet",
+            "id": "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh",
+        }
+
+        result = await GatewayHttpClient.get_instance().kujira_get_market(payload=payload)
+
+        self.assertEqual(result["id"], "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh")
+        self.assertEqual(result["name"], "KUJI/DEMO")
+        self.assertEqual(result["baseToken"], {"id": "ukuji", "name": "KUJI", "symbol": "KUJI", "decimals": 6})
+        self.assertEqual(result["quoteToken"],
+                         {"id": "factory/kujira1ltvwg69sw3c5z99c6rr08hal7v0kdzfxz07yj5/demo", "name": "DEMO",
+                          "symbol": "DEMO", "decimals": 6})
+        self.assertEqual(result["minimumOrderSize"], "0.001")
+        self.assertEqual(result["minimumPriceIncrement"], "0.001")
+        self.assertEqual(result["minimumBaseAmountIncrement"], "0.001")
+        self.assertEqual(result["minimumQuoteAmountIncrement"], "0.001")
+        self.assertEqual(result["fees"], {"maker": "0.075", "taker": "0.15", "serviceProvider": "0"})
+
+    @async_test(loop=ev_loop)
+    async def test_kujira_get_orderbook(self):
+        payload = {
+            "chain": "kujira",
+            "network": "testnet",
+            "marketId": "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh",
+        }
+
+        result = await GatewayHttpClient.get_instance().kujira_get_order_book(payload=payload)
+
+        self.assertEqual(result["market"]["id"], "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh")
+        self.assertEqual(len(result["bids"]), 3)
+        self.assertEqual(len(result["asks"]), 3)
+        self.assertGreater(Decimal(result["bestBid"]["price"]), 0)
+        self.assertGreater(Decimal(result["bestAsk"]["price"]), 0)
+        self.assertEqual(len(result["connectorOrderBook"]["base"]), 3)
+        self.assertEqual(len(result["connectorOrderBook"]["quote"]), 3)
+
+    @async_test(loop=ev_loop)
+    async def test_kujira_get_ticker(self):
         result = await GatewayHttpClient.get_instance().get_clob_ticker(
             connector="kujira", chain="kujira", network="mainnet"
         )
@@ -184,7 +189,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
         self.assertEqual(expected_markets, result["markets"])
 
     @async_test(loop=ev_loop)
-    async def test_clob_batch_order_update(self):
+    async def test_kujira_batch_order_update(self):
         trading_pair = combine_to_hb_trading_pair(base="COIN", quote="ALPHA")
         order_to_create = GatewayInFlightOrder(
             client_order_id="someOrderIDCreate",
@@ -218,3 +223,12 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
         self.assertEqual(1647066456595, result["timestamp"])
         self.assertEqual(3, result["latency"])
         self.assertEqual("0x7E5F4552091A69125d5DfCb7b8C2659029395Ceg", result["txHash"])  # noqa: mock
+
+    @async_test(loop=ev_loop)
+    async def test_kujira_get_all_markets(self):
+        result = await GatewayHttpClient.get_instance().get_clob_markets(
+            connector="kujira", chain="kujira", network="mainnet"
+        )
+
+        self.assertEqual(2, len(result["markets"]))
+        self.assertEqual("COIN-ALPHA", result["markets"][1]["tradingPair"])
