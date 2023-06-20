@@ -113,7 +113,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         await self._update_markets()
 
-        # await self.cancel_all_orders()
+        await self.cancel_all_orders()
         await self.settle_market_funds()
 
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
@@ -181,7 +181,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     f"""Placement of order "{order.client_order_id}" failed. Invalid transaction hash: "{transaction_hash}"."""
                 )
 
-        order.exchange_order_id = placed_order.id
+        # order.exchange_order_id = placed_order.id
 
         misc_updates = DotMap({
             "creation_transaction_hash": transaction_hash,
@@ -189,7 +189,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self.logger().debug("place_order: end")
 
-        return placed_order.clientId, misc_updates
+        return placed_order.id, misc_updates
 
     async def batch_order_create(self, orders_to_create: List[GatewayInFlightOrder]) -> List[PlaceOrderResult]:
         self.logger().debug("batch_order_create: start")
