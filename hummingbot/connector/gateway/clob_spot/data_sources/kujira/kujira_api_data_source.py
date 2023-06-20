@@ -113,7 +113,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         await self._update_markets()
 
-        await self.cancel_all_orders()
+        # await self.cancel_all_orders()
         await self.settle_market_funds()
 
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
@@ -126,7 +126,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._tasks.update_markets and self._tasks.update_markets.cancel()
         self._tasks.update_markets = None
 
-        await self.cancel_all_orders()
+        # await self.cancel_all_orders()
         await self.settle_market_funds()
 
         self.logger().debug("stop: end")
@@ -449,7 +449,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             transaction_hash = "".join(hashes)
 
-            if transaction_hash in (None, ""):
+            if transaction_hash in (None, "") and ids:
                 raise RuntimeError(
                     f"""Cancellation of orders "{ids}" failed. Invalid transaction hash: "{transaction_hash}"."""
                 )
