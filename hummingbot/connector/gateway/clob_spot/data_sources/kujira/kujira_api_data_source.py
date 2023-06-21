@@ -14,7 +14,7 @@ from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlight
 from hummingbot.connector.trading_rule import TradingRule
 from hummingbot.core.data_type.cancellation_result import CancellationResult
 from hummingbot.core.data_type.common import OrderType
-from hummingbot.core.data_type.in_flight_order import OrderUpdate, TradeUpdate
+from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate, TradeUpdate
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
 from hummingbot.core.data_type.trade_fee import MakerTakerExchangeFeeRates, TokenAmount, TradeFeeBase, TradeFeeSchema
 from hummingbot.core.event.events import AccountEvent, MarketEvent, OrderBookDataSourceEvent
@@ -274,64 +274,69 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return place_order_results
 
     async def cancel_order(self, order: GatewayInFlightOrder) -> Tuple[bool, Optional[Dict[str, Any]]]:
-        self.logger().debug("cancel_order: start")
+        if self._gateway_order_tracker.active_orders.get(order.client_order_id).current_state != OrderState.CANCELED:
+            self.logger().debug("cancel_order: start")
 
-        self._check_markets_initialized() or await self._update_markets()
+            self._check_markets_initialized() or await self._update_markets()
 
-        await order.get_exchange_order_id()
+            await order.get_exchange_order_id()
 
-        transaction_hash = None
+            transaction_hash = None
 
-        async with self._locks.cancel_order:
-            try:
-                request = {
-                    "chain": self._chain,
-                    "network": self._network,
-                    "connector": self._connector,
-                    "id": order.exchange_order_id,
-                    "marketId": self._market.id,
-                    "ownerAddress": self._owner_address,
-                }
+            async with self._locks.cancel_order:
+                try:
+                    request = {
+                        "chain": self._chain,
+                        "network": self._network,
+                        "connector": self._connector,
+                        "id": order.exchange_order_id,
+                        "marketId": self._market.id,
+                        "ownerAddress": self._owner_address,
+                    }
 
-                self.logger().debug(f"""cancel_order request:\n "{self._dump(request)}".""")
+                    self.logger().debug(f"""cancel_order request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.kujira_delete_order(request)
+                    response = await self._gateway.kujira_delete_order(request)
 
-                self.logger().debug(f"""cancel_order response:\n "{self._dump(response)}".""")
+                    self.logger().debug(f"""cancel_order response:\n "{self._dump(response)}".""")
 
-                cancelled_order = DotMap(response, _dynamic=False)
+                    cancelled_order = DotMap(response, _dynamic=False)
 
-                transaction_hash = cancelled_order.hashes.cancellation
+                    transaction_hash = cancelled_order.hashes.cancellation
 
-                if transaction_hash in (None, ""):
-                    raise Exception(
-                        f"""Cancellation of order "{order.client_order_id}" / "{cancelled_order.id}" failed. Invalid transaction hash: "{transaction_hash}"."""
-                    )
+                    if transaction_hash in (None, ""):
+                        raise Exception(
+                            f"""Cancellation of order "{order.client_order_id}" / "{cancelled_order.id}" failed. Invalid transaction hash: "{transaction_hash}"."""
+                        )
 
-                self.logger().debug(
-                    f"""Order "{order.client_order_id}" / "{cancelled_order.id}" successfully cancelled. Transaction hash: "{cancelled_order.hashes.cancellation}"."""
-                )
-            except Exception as exception:
-                if 'No orders with the specified information exist' in str(exception.args):
                     self.logger().debug(
-                        f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" already cancelled."""
+                        f"""Order "{order.client_order_id}" / "{cancelled_order.id}" successfully cancelled. Transaction hash: "{cancelled_order.hashes.cancellation}"."""
                     )
+                except Exception as exception:
+                    if 'No orders with the specified information exist' in str(exception.args):
+                        self.logger().debug(
+                            f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" already cancelled."""
+                        )
 
-                    transaction_hash = "0000000000000000000000000000000000000000000000000000000000000000"  # noqa: mock
-                else:
-                    self.logger().debug(
-                        f"""Cancellation of order "{order.client_order_id}" / "{order.exchange_order_id}" failed."""
-                    )
+                        transaction_hash = "0000000000000000000000000000000000000000000000000000000000000000"  # noqa: mock
+                    else:
+                        self.logger().debug(
+                            f"""Cancellation of order "{order.client_order_id}" / "{order.exchange_order_id}" failed."""
+                        )
 
-                    raise exception
+                        raise exception
 
-        misc_updates = DotMap({
-            "cancelation_transaction_hash": transaction_hash,
-        }, _dynamic=False)
+            misc_updates = DotMap({
+                "cancelation_transaction_hash": transaction_hash,
+            }, _dynamic=False)
 
-        self.logger().debug("cancel_order: end")
+            self.logger().debug("cancel_order: end")
 
-        return True, misc_updates
+            if self._gateway_order_tracker.active_orders.get(order.client_order_id):
+                order.current_state = OrderState.CANCELED
+
+            return True, misc_updates
+        return True, DotMap({"No updates. The order is already cancelled."}, _dynamic=False)
 
     async def batch_order_cancel(self, orders_to_cancel: List[GatewayInFlightOrder]) -> List[CancelOrderResult]:
         self.logger().debug("batch_order_cancel: start")
@@ -601,117 +606,127 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return hb_balances
 
     async def get_order_status_update(self, in_flight_order: GatewayInFlightOrder) -> OrderUpdate:
-        self.logger().debug("get_order_status_update: start")
 
-        await in_flight_order.get_exchange_order_id()
+        if self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id):
 
-        request = {
-            "chain": self._chain,
-            "network": self._network,
-            "connector": self._connector,
-            "id": in_flight_order.exchange_order_id,
-            "marketId": self._market.id,
-            "ownerAddress": self._owner_address,
-        }
+            self.logger().debug("get_order_status_update: start")
 
-        self.logger().debug(f"""get_order_status_update request:\n "{self._dump(request)}".""")
+            if self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id).current_state != OrderState.CANCELED:
+                await in_flight_order.get_exchange_order_id()
 
-        response = await self._gateway.kujira_get_order(request)
+                request = {
+                    "chain": self._chain,
+                    "network": self._network,
+                    "connector": self._connector,
+                    "id": in_flight_order.exchange_order_id,
+                    "marketId": self._market.id,
+                    "ownerAddress": self._owner_address,
+                }
 
-        self.logger().debug(f"""get_order_status_update response:\n "{self._dump(response)}".""")
+                self.logger().debug(f"""get_order_status_update request:\n "{self._dump(request)}".""")
 
-        order = DotMap(response, _dynamic=False)
+                response = await self._gateway.kujira_get_order(request)
 
-        if order:
-            order_status = KujiraOrderStatus.to_hummingbot(KujiraOrderStatus.from_name(order.status))
-        else:
-            order_status = in_flight_order.current_state
+                self.logger().debug(f"""get_order_status_update response:\n "{self._dump(response)}".""")
 
-        timestamp = time()
+                order = DotMap(response, _dynamic=False)
 
-        open_update = OrderUpdate(
-            trading_pair=in_flight_order.trading_pair,
-            update_timestamp=timestamp,
-            new_state=order_status,
-            client_order_id=in_flight_order.client_order_id,
-            exchange_order_id=in_flight_order.exchange_order_id,
-            misc_updates={
-                "creation_transaction_hash": in_flight_order.creation_transaction_hash,
-                "cancelation_transaction_hash": in_flight_order.cancel_tx_hash,
-            },
-        )
-        self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=open_update)
+                if order:
+                    order_status = KujiraOrderStatus.to_hummingbot(KujiraOrderStatus.from_name(order.status))
+                else:
+                    order_status = in_flight_order.current_state
 
-        self.logger().debug("get_order_status_update: end")
+                timestamp = time()
 
-        return open_update
+                open_update = OrderUpdate(
+                    trading_pair=in_flight_order.trading_pair,
+                    update_timestamp=timestamp,
+                    new_state=order_status,
+                    client_order_id=in_flight_order.client_order_id,
+                    exchange_order_id=in_flight_order.exchange_order_id,
+                    misc_updates={
+                        "creation_transaction_hash": in_flight_order.creation_transaction_hash,
+                        "cancelation_transaction_hash": in_flight_order.cancel_tx_hash,
+                    },
+                )
+                self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=open_update)
+
+                self.logger().debug("get_order_status_update: end")
+
+                return open_update
+
+            self.logger().debug("get_order_status_update: end")
+            return self.gateway_order_tracker.all_orders.get(in_flight_order.client_order_id)
 
     async def get_all_order_fills(self, in_flight_order: GatewayInFlightOrder) -> List[TradeUpdate]:
-        self.logger().debug("get_all_order_fills: start")
+        if in_flight_order.exchange_order_id:
+            if self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id):
+                if self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id).current_state != OrderState.CANCELED:
+                    self.logger().debug("get_all_order_fills: start")
 
-        trade_update = None
+                    trade_update = None
 
-        request = {
-            "chain": self._chain,
-            "network": self._network,
-            "connector": self._connector,
-            "id": in_flight_order.exchange_order_id,
-            "marketId": self._market.id,
-            "ownerAddress": self._owner_address,
-            "status": KujiraOrderStatus.FILLED.value[0]
-        }
+                    request = {
+                        "chain": self._chain,
+                        "network": self._network,
+                        "connector": self._connector,
+                        "id": in_flight_order.exchange_order_id,
+                        "marketId": self._market.id,
+                        "ownerAddress": self._owner_address,
+                        "status": KujiraOrderStatus.FILLED.value[0]
+                    }
 
-        self.logger().debug(f"""get_all_order_fills request:\n "{self._dump(request)}".""")
+                    self.logger().debug(f"""get_all_order_fills request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway.kujira_get_order(request)
+                    response = await self._gateway.kujira_get_order(request)
 
-        self.logger().debug(f"""get_all_order_fills response:\n "{self._dump(response)}".""")
+                    self.logger().debug(f"""get_all_order_fills response:\n "{self._dump(response)}".""")
 
-        filled_order = DotMap(response, _dynamic=False)
+                    filled_order = DotMap(response, _dynamic=False)
 
-        if filled_order:
-            timestamp = time()
-            trade_id = str(timestamp)
+                    if filled_order:
+                        timestamp = time()
+                        trade_id = str(timestamp)
 
-            # Simplified approach
-            # is_taker = in_flight_order.order_type == OrderType.LIMIT
+                        # Simplified approach
+                        # is_taker = in_flight_order.order_type == OrderType.LIMIT
 
-            # order_book_message = OrderBookMessage(
-            #     message_type=OrderBookMessageType.TRADE,
-            #     timestamp=timestamp,
-            #     content={
-            #         "trade_id": trade_id,
-            #         "trading_pair": in_flight_order.trading_pair,
-            #         "trade_type": in_flight_order.trade_type,
-            #         "amount": in_flight_order.amount,
-            #         "price": in_flight_order.price,
-            #         "is_taker": is_taker,
-            #     },
-            # )
+                        # order_book_message = OrderBookMessage(
+                        #     message_type=OrderBookMessageType.TRADE,
+                        #     timestamp=timestamp,
+                        #     content={
+                        #         "trade_id": trade_id,
+                        #         "trading_pair": in_flight_order.trading_pair,
+                        #         "trade_type": in_flight_order.trade_type,
+                        #         "amount": in_flight_order.amount,
+                        #         "price": in_flight_order.price,
+                        #         "is_taker": is_taker,
+                        #     },
+                        # )
 
-            trade_update = TradeUpdate(
-                trade_id=trade_id,
-                client_order_id=in_flight_order.client_order_id,
-                exchange_order_id=in_flight_order.exchange_order_id,
-                trading_pair=in_flight_order.trading_pair,
-                fill_timestamp=timestamp,
-                fill_price=in_flight_order.price,
-                fill_base_amount=in_flight_order.amount,
-                fill_quote_amount=in_flight_order.price * in_flight_order.amount,
-                fee=TradeFeeBase.new_spot_fee(
-                    fee_schema=TradeFeeSchema(),
-                    trade_type=in_flight_order.trade_type,
-                    flat_fees=[TokenAmount(
-                        amount=Decimal(self._market.fees.taker),
-                        token=self._market.quoteToken.symbol
-                    )]
-                ),
-            )
+                        trade_update = TradeUpdate(
+                            trade_id=trade_id,
+                            client_order_id=in_flight_order.client_order_id,
+                            exchange_order_id=in_flight_order.exchange_order_id,
+                            trading_pair=in_flight_order.trading_pair,
+                            fill_timestamp=timestamp,
+                            fill_price=in_flight_order.price,
+                            fill_base_amount=in_flight_order.amount,
+                            fill_quote_amount=in_flight_order.price * in_flight_order.amount,
+                            fee=TradeFeeBase.new_spot_fee(
+                                fee_schema=TradeFeeSchema(),
+                                trade_type=in_flight_order.trade_type,
+                                flat_fees=[TokenAmount(
+                                    amount=Decimal(self._market.fees.taker),
+                                    token=self._market.quoteToken.symbol
+                                )]
+                            ),
+                        )
 
-        self.logger().debug("get_all_order_fills: end")
+                    self.logger().debug("get_all_order_fills: end")
 
-        if trade_update:
-            return [trade_update]
+                    if trade_update:
+                        return [trade_update]
 
         return []
 
