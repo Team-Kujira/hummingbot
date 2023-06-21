@@ -267,7 +267,7 @@ class ClientOrderTracker:
                 self.logger().debug(f"Order is not/no longer being tracked ({client_order_id})")
 
     async def _process_order_update(self, order_update: OrderUpdate):
-        if not order_update.client_order_id and not order_update.exchange_order_id:
+        if order_update is None or (not order_update.client_order_id and not order_update.exchange_order_id):
             self.logger().error("OrderUpdate does not contain any client_order_id or exchange_order_id", exc_info=True)
             return
 
