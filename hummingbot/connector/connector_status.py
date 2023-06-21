@@ -65,6 +65,7 @@ connector_status = {
     'foxbit': 'bronze',
     'phemex_perpetual': 'bronze',
     'phemex_perpetual_testnet': 'bronze',
+    'polkadex': 'bronze',
     'kujira': 'bronze',
 }
 
