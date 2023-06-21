@@ -608,11 +608,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
     async def get_order_status_update(self, in_flight_order: GatewayInFlightOrder) -> OrderUpdate:
 
-        if self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id):
+        active_order = self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id)
+
+        if active_order:
 
             self.logger().debug("get_order_status_update: start")
 
-            if self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id).current_state != OrderState.CANCELED:
+            if active_order.current_state != OrderState.CANCELED:
                 await in_flight_order.get_exchange_order_id()
 
                 request = {
@@ -637,11 +639,9 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 else:
                     order_status = in_flight_order.current_state
 
-                timestamp = time()
-
                 open_update = OrderUpdate(
                     trading_pair=in_flight_order.trading_pair,
-                    update_timestamp=timestamp,
+                    update_timestamp=time(),
                     new_state=order_status,
                     client_order_id=in_flight_order.client_order_id,
                     exchange_order_id=in_flight_order.exchange_order_id,
@@ -656,13 +656,28 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 return open_update
 
-            self.logger().debug("get_order_status_update: end")
-            return self.gateway_order_tracker.all_orders.get(in_flight_order.client_order_id)
+        no_update = OrderUpdate(
+            trading_pair=in_flight_order.trading_pair,
+            update_timestamp=time(),
+            new_state=in_flight_order.current_state,
+            client_order_id=in_flight_order.client_order_id,
+            exchange_order_id=in_flight_order.exchange_order_id,
+            misc_updates={
+                "creation_transaction_hash": in_flight_order.creation_transaction_hash,
+                "cancelation_transaction_hash": in_flight_order.cancel_tx_hash,
+            },
+        )
+        self.logger().debug("get_order_status_update: end")
+        return no_update
 
     async def get_all_order_fills(self, in_flight_order: GatewayInFlightOrder) -> List[TradeUpdate]:
+
         if in_flight_order.exchange_order_id:
-            if self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id):
-                if self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id).current_state != OrderState.CANCELED:
+
+            active_order = self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id)
+
+            if active_order:
+                if active_order.current_state != OrderState.CANCELED:
                     self.logger().debug("get_all_order_fills: start")
 
                     trade_update = None
