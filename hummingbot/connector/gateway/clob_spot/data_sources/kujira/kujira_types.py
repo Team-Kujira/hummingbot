@@ -72,7 +72,7 @@ class OrderStatus(Enum):
             return OrderStatus.PARTIALLY_FILLED
         elif target == HummingBotOrderStatus.FILLED:
             return OrderStatus.FILLED
-        # elif target == HummingBotOrderStatus.FAILED:
+        # elif target == HummingBotOrderStatus.FAILED: # TODO verify/fix !!!
         #     return OrderStatus.FAILED
         # elif target == HummingBotOrderStatus.PENDING_APPROVAL:
         #     return OrderStatus.APPROVAL_PENDING
@@ -99,7 +99,7 @@ class OrderStatus(Enum):
             return HummingBotOrderStatus.PENDING_CREATE
         elif self == OrderStatus.CANCELLATION_PENDING:
             return HummingBotOrderStatus.PENDING_CANCEL
-        # elif self == OrderStatus.UNKNOWN:
+        # elif self == OrderStatus.UNKNOWN: # TODO verify/fix !!!
         #     return HummingBotOrderStatus.UNKNOWN
         else:
             raise ValueError(f"Unknown order status: {self}")

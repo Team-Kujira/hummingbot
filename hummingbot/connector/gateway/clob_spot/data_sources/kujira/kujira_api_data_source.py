@@ -126,7 +126,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._tasks.update_markets and self._tasks.update_markets.cancel()
         self._tasks.update_markets = None
 
-        # await self.cancel_all_orders()
+        # await self.cancel_all_orders() # TODO verify/fix !!!
         await self.settle_market_funds()
 
         self.logger().debug("stop: end")
@@ -181,7 +181,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     f"""Placement of order "{order.client_order_id}" failed. Invalid transaction hash: "{transaction_hash}"."""
                 )
 
-        # order.exchange_order_id = placed_order.id
+        # order.exchange_order_id = placed_order.id # TODO verify/fix !!!
 
         misc_updates = DotMap({
             "creation_transaction_hash": transaction_hash,
@@ -570,7 +570,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return snapshot
 
     async def get_account_balances(self) -> Dict[str, Dict[str, Decimal]]:
-        # self.logger().debug("get_account_balances: start")
+        # self.logger().debug("get_account_balances: start") # TODO verify/fix !!!
 
         request = {
             "chain": self._chain,
@@ -602,7 +602,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self._user_balances = balances
 
-        # self.logger().debug("get_account_balances: end")
+        # self.logger().debug("get_account_balances: end") # TODO verify/fix !!!
 
         return hb_balances
 
@@ -704,7 +704,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                         timestamp = time()
                         trade_id = str(timestamp)
 
-                        # Simplified approach
+                        # Simplified approach # TODO verify/fix !!!
                         # is_taker = in_flight_order.order_type == OrderType.LIMIT
 
                         # order_book_message = OrderBookMessage(
@@ -765,7 +765,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return output
 
     async def check_network_status(self) -> NetworkStatus:
-        # self.logger().debug("check_network_status: start")
+        # self.logger().debug("check_network_status: start") # TODO verify/fix !!!
 
         try:
             await self._gateway.ping_gateway()
@@ -778,7 +778,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             output = NetworkStatus.NOT_CONNECTED
 
-        # self.logger().debug("check_network_status: end")
+        # self.logger().debug("check_network_status: end") # TODO verify/fix !!!
 
         return output
 
@@ -793,11 +793,11 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return output
 
     def _check_markets_initialized(self) -> bool:
-        # self.logger().debug("_check_markets_initialized: start")
+        # self.logger().debug("_check_markets_initialized: start") # TODO verify/fix !!!
 
         output = self._markets is not None and bool(self._markets)
 
-        # self.logger().debug("_check_markets_initialized: end")
+        # self.logger().debug("_check_markets_initialized: end") # TODO verify/fix !!!
 
         return output
 

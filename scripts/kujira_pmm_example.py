@@ -38,7 +38,7 @@ class KujiraPMMExample(ScriptStrategyBase):
 
     def __init__(self):
         try:
-            # self._log(DEBUG, """__init__... start""")
+            # self._log(DEBUG, """__init__... start""") # TODO verify/fix !!!
 
             super().__init__()
 
@@ -131,7 +131,7 @@ class KujiraPMMExample(ScriptStrategyBase):
             self._decimal_infinity = Decimal("Infinity")
         finally:
             pass
-        #     self._log(DEBUG, """__init__... end""")
+        #     self._log(DEBUG, """__init__... end""") # TODO verify/fix !!!
 
     def get_markets_definitions(self) -> Dict[str, List[str]]:
         return self._configuration["markets"]
@@ -143,7 +143,7 @@ class KujiraPMMExample(ScriptStrategyBase):
 
             self.logger().setLevel(self._configuration["logger"].get("level", "INFO"))
 
-            # await super().initialize(start_command)
+            # await super().initialize(start_command) # TODO verify/fix !!!
             # self.initialized = False
 
             self._connector_id = next(iter(self._configuration["markets"]))
@@ -152,10 +152,10 @@ class KujiraPMMExample(ScriptStrategyBase):
             self._market_name = convert_hb_trading_pair_to_market_name(self._hb_trading_pair)
 
             # noinspection PyTypeChecker
-            # self._connector: GatewayCLOBSPOT = self.connectors[self._connector_id]
+            # self._connector: GatewayCLOBSPOT = self.connectors[self._connector_id] # TODO verify/fix !!!
             self._gateway: GatewayHttpClient = GatewayHttpClient.get_instance()
 
-            # self._owner_address = self._connector.address
+            # self._owner_address = self._connector.address # TODO verify/fix !!!
             self._owner_address = self._configuration["owner_address"]
 
             self._market = await self._get_market()
@@ -897,7 +897,7 @@ class KujiraPMMExample(ScriptStrategyBase):
 
         q75, q25 = np.percentile(prices, [75, 25])
 
-        # https://www.askpython.com/python/examples/detection-removal-outliers-in-python
+        # https://www.askpython.com/python/examples/detection-removal-outliers-in-python  # TODO verify/fix !!!
         # intr_qr = q75-q25
         # max_threshold = q75+(1.5*intr_qr)
         # min_threshold = q75-(1.5*intr_qr) # Error: Sometimes this function assigns negative value for min
