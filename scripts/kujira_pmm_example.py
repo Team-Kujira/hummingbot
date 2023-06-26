@@ -143,16 +143,12 @@ class KujiraPMMExample(ScriptStrategyBase):
 
             self.logger().setLevel(self._configuration["logger"].get("level", "INFO"))
 
-            # await super().initialize(start_command) # TODO verify/fix !!!
-            # self.initialized = False
-
             self._connector_id = next(iter(self._configuration["markets"]))
 
             self._hb_trading_pair = self._configuration["markets"][self._connector_id][0]
             self._market_name = convert_hb_trading_pair_to_market_name(self._hb_trading_pair)
 
             # noinspection PyTypeChecker
-            # self._connector: GatewayCLOBSPOT = self.connectors[self._connector_id] # TODO verify/fix !!!
             self._gateway: GatewayHttpClient = GatewayHttpClient.get_instance()
 
             # self._owner_address = self._connector.address # TODO verify/fix !!!

@@ -126,7 +126,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._tasks.update_markets and self._tasks.update_markets.cancel()
         self._tasks.update_markets = None
 
-        # await self.cancel_all_orders() # TODO verify/fix !!!
+        await self.cancel_all_orders()
         await self.settle_market_funds()
 
         self.logger().debug("stop: end")
@@ -180,8 +180,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 raise Exception(
                     f"""Placement of order "{order.client_order_id}" failed. Invalid transaction hash: "{transaction_hash}"."""
                 )
-
-        # order.exchange_order_id = placed_order.id # TODO verify/fix !!!
 
         misc_updates = DotMap({
             "creation_transaction_hash": transaction_hash,
@@ -703,22 +701,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     if filled_order:
                         timestamp = time()
                         trade_id = str(timestamp)
-
-                        # Simplified approach # TODO verify/fix !!!
-                        # is_taker = in_flight_order.order_type == OrderType.LIMIT
-
-                        # order_book_message = OrderBookMessage(
-                        #     message_type=OrderBookMessageType.TRADE,
-                        #     timestamp=timestamp,
-                        #     content={
-                        #         "trade_id": trade_id,
-                        #         "trading_pair": in_flight_order.trading_pair,
-                        #         "trade_type": in_flight_order.trade_type,
-                        #         "amount": in_flight_order.amount,
-                        #         "price": in_flight_order.price,
-                        #         "is_taker": is_taker,
-                        #     },
-                        # )
 
                         trade_update = TradeUpdate(
                             trade_id=trade_id,
