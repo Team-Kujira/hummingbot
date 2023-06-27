@@ -38,7 +38,7 @@ class KujiraPMMExample(ScriptStrategyBase):
 
     def __init__(self):
         try:
-            # self._log(DEBUG, """__init__... start""") # TODO verify/fix !!!
+            # self._log(DEBUG, """__init__... start""")
 
             super().__init__()
 
@@ -131,7 +131,7 @@ class KujiraPMMExample(ScriptStrategyBase):
             self._decimal_infinity = Decimal("Infinity")
         finally:
             pass
-        #     self._log(DEBUG, """__init__... end""") # TODO verify/fix !!!
+        #     self._log(DEBUG, """__init__... end""")
 
     def get_markets_definitions(self) -> Dict[str, List[str]]:
         return self._configuration["markets"]
@@ -151,7 +151,7 @@ class KujiraPMMExample(ScriptStrategyBase):
             # noinspection PyTypeChecker
             self._gateway: GatewayHttpClient = GatewayHttpClient.get_instance()
 
-            # self._owner_address = self._connector.address # TODO verify/fix !!!
+            # self._owner_address = self._connector.address
             self._owner_address = self._configuration["owner_address"]
 
             self._market = await self._get_market()
@@ -893,7 +893,7 @@ class KujiraPMMExample(ScriptStrategyBase):
 
         q75, q25 = np.percentile(prices, [75, 25])
 
-        # https://www.askpython.com/python/examples/detection-removal-outliers-in-python  # TODO verify/fix !!!
+        # https://www.askpython.com/python/examples/detection-removal-outliers-in-python
         # intr_qr = q75-q25
         # max_threshold = q75+(1.5*intr_qr)
         # min_threshold = q75-(1.5*intr_qr) # Error: Sometimes this function assigns negative value for min
