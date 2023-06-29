@@ -48,7 +48,7 @@ class KujiraPMMExample(ScriptStrategyBase):
                 "chain": "kujira",
                 "network": "testnet",
                 "connector": "kujira",
-                "owner_address": os.environ["TEST_KUJIRA_WALLET_PUBLIC_KEY"],
+                "owner_address": None,
                 "markets": {
                     "kujira_kujira_testnet": [  # Only one market can be used for now
                         # "KUJI-DEMO",  # "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh"
@@ -151,8 +151,13 @@ class KujiraPMMExample(ScriptStrategyBase):
             # noinspection PyTypeChecker
             self._gateway: GatewayHttpClient = GatewayHttpClient.get_instance()
 
-            # self._owner_address = self._connector.address
-            self._owner_address = self._configuration["owner_address"]
+            request = {
+                "chain": self._configuration["chain"],
+                "network": self._configuration["network"],
+                "mnemonic": os.environ["TEST_KUJIRA_WALLET_MNEMONIC"],
+                "accountNumber": 0
+            }
+            self._owner_address = await self._gateway.kujira_get_wallet_public_key(request)
 
             self._market = await self._get_market()
 
