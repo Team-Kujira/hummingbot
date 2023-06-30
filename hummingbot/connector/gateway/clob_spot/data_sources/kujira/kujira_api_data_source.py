@@ -568,7 +568,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return snapshot
 
     async def get_account_balances(self) -> Dict[str, Dict[str, Decimal]]:
-        # self.logger().debug("get_account_balances: start") # TODO verify/fix !!!
+        # self.logger().debug("get_account_balances: start")
 
         request = {
             "chain": self._chain,
@@ -600,7 +600,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self._user_balances = balances
 
-        # self.logger().debug("get_account_balances: end") # TODO verify/fix !!!
+        # self.logger().debug("get_account_balances: end")
 
         return hb_balances
 
@@ -747,7 +747,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return output
 
     async def check_network_status(self) -> NetworkStatus:
-        # self.logger().debug("check_network_status: start") # TODO verify/fix !!!
+        # self.logger().debug("check_network_status: start")
 
         try:
             await self._gateway.ping_gateway()
@@ -760,7 +760,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             output = NetworkStatus.NOT_CONNECTED
 
-        # self.logger().debug("check_network_status: end") # TODO verify/fix !!!
+        # self.logger().debug("check_network_status: end")
 
         return output
 
@@ -775,11 +775,11 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         return output
 
     def _check_markets_initialized(self) -> bool:
-        # self.logger().debug("_check_markets_initialized: start") # TODO verify/fix !!!
+        # self.logger().debug("_check_markets_initialized: start")
 
         output = self._markets is not None and bool(self._markets)
 
-        # self.logger().debug("_check_markets_initialized: end") # TODO verify/fix !!!
+        # self.logger().debug("_check_markets_initialized: end")
 
         return output
 
