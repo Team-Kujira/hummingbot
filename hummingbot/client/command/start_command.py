@@ -7,6 +7,7 @@ import threading
 import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
 
+import nest_asyncio
 import pandas as pd
 
 import hummingbot.client.settings as settings
@@ -24,6 +25,8 @@ from hummingbot.exceptions import InvalidScriptModule, OracleRateUnavailable
 from hummingbot.strategy.directional_strategy_base import DirectionalStrategyBase
 from hummingbot.strategy.script_strategy_base import ScriptStrategyBase
 from hummingbot.user.user_balances import UserBalances
+
+nest_asyncio.apply()
 
 if TYPE_CHECKING:
     from hummingbot.client.hummingbot_application import HummingbotApplication  # noqa: F401
@@ -197,11 +200,8 @@ class StartCommand(GatewayChainApiManager):
 
     def start_script_strategy(self):
         script_strategy = self.load_script_class()
-        markets_list = []
-        for conn, pairs in script_strategy.markets.items():
-            markets_list.append((conn, list(pairs)))
-        self._initialize_markets(markets_list)
-        self.strategy = script_strategy(self.markets)
+        self.strategy = script_strategy()
+        asyncio.get_event_loop().run_until_complete(self.strategy.initialize(self))
 
     def load_script_class(self):
         """
