@@ -265,7 +265,7 @@ class GatewayHttpClient:
         return await self.api_request(method="post", path_url="wallet/add", params=request)
 
     async def get_configuration(self, fail_silently: bool = False) -> Dict[str, Any]:
-        return await self.api_request("get", "network/config", fail_silently=fail_silently)
+        return await self.api_request("get", "chain/config", fail_silently=fail_silently)
 
     async def get_balances(
             self,
@@ -278,7 +278,6 @@ class GatewayHttpClient:
     ) -> Dict[str, Any]:
         if isinstance(token_symbols, list):
             token_symbols = [x for x in token_symbols if isinstance(x, str) and x.strip() != '']
-            network_path = chain if chain in ["near", "algorand"] else "network"
             request_params = {
                 "chain": chain,
                 "network": network,
@@ -289,7 +288,7 @@ class GatewayHttpClient:
                 request_params["connector"] = connector
             return await self.api_request(
                 method="post",
-                path_url=f"{network_path}/balances",
+                path_url="chain/balances",
                 params=request_params,
                 fail_silently=fail_silently,
             )
@@ -302,8 +301,7 @@ class GatewayHttpClient:
             network: str,
             fail_silently: bool = True
     ) -> Dict[str, Any]:
-        network_path = chain if chain in ["near"] else "network"
-        return await self.api_request("get", f"{network_path}/tokens", {
+        return await self.api_request("get", "chain/tokens", {
             "chain": chain,
             "network": network
         }, fail_silently=fail_silently)
@@ -313,10 +311,10 @@ class GatewayHttpClient:
             network: str,
             fail_silently: bool = True
     ) -> Dict[str, Any]:
-        return await self.api_request("get", "algorand/assets", {
+        return await self.get_tokens(**{
             "chain": "algorand",
-            "network": network
-        }, fail_silently=fail_silently)
+            "network": network,
+            "fail_silently": fail_silently})
 
     async def get_network_status(
             self,
@@ -328,7 +326,7 @@ class GatewayHttpClient:
         if chain is not None and network is not None:
             req_data["chain"] = chain
             req_data["network"] = network
-        return await self.api_request("get", "network/status", req_data, fail_silently=fail_silently)
+        return await self.api_request("get", "chain/status", req_data, fail_silently=fail_silently)
 
     async def approve_token(
             self,
@@ -356,7 +354,7 @@ class GatewayHttpClient:
             request_payload["maxPriorityFeePerGas"] = str(max_priority_fee_per_gas)
         return await self.api_request(
             "post",
-            "evm/approve",
+            "chain/approve",
             request_payload
         )
 
@@ -369,7 +367,7 @@ class GatewayHttpClient:
             spender: str,
             fail_silently: bool = False
     ) -> Dict[str, Any]:
-        return await self.api_request("post", "evm/allowances", {
+        return await self.api_request("post", "chain/allowances", {
             "chain": chain,
             "network": network,
             "address": address,
@@ -421,8 +419,7 @@ class GatewayHttpClient:
             request["connector"] = connector
         if address:
             request["address"] = address
-        network_path = chain if chain in ["near", "algorand"] else "network"
-        return await self.api_request("post", f"{network_path}/poll", request, fail_silently=fail_silently)  # type: ignore
+        return await self.api_request("post", "chain/poll", request, fail_silently=fail_silently)  # type: ignore
 
     async def wallet_sign(
         self,
@@ -446,7 +443,7 @@ class GatewayHttpClient:
             address: str,
             fail_silently: bool = False
     ) -> Dict[str, Any]:
-        return await self.api_request("post", "evm/nextNonce", {
+        return await self.api_request("post", "chain/nextNonce", {
             "chain": chain,
             "network": network,
             "address": address
@@ -459,7 +456,7 @@ class GatewayHttpClient:
             address: str,
             nonce: int
     ) -> Dict[str, Any]:
-        return await self.api_request("post", "evm/cancel", {
+        return await self.api_request("post", "chain/cancel", {
             "chain": chain,
             "network": network,
             "address": address,
@@ -1000,8 +997,9 @@ class GatewayHttpClient:
             "chain": chain,
             "network": network,
             "address": address,
+            "token_symbols": [],
         }
-        return await self.api_request("post", "injective/balances", request_payload, use_body=True)
+        return await self.get_balances(**request_payload)
 
     async def clob_perp_funding_info(
         self,
@@ -1155,3 +1153,203 @@ class GatewayHttpClient:
             "orderId": exchange_order_id
         }
         return await self.api_request("delete", "clob/perp/orders", request_payload, use_body=True)
+
+    async def kujira_get_status(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira", payload, use_body=True)
+
+    async def kujira_get_token(
+        self,
+        chain: str,
+        network: str,
+        payload: Dict[str, Any]
+    ):
+        request_payload = {
+            "chain": chain,
+            "network": network,
+            **payload
+        }
+
+        return await self.api_request("get", "chain/kujira/token", request_payload, use_body=True)
+
+    async def kujira_get_tokens(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/tokens", payload, use_body=True)
+
+    async def kujira_get_tokens_all(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/tokens/all", payload, use_body=True)
+
+    async def kujira_get_market(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/market", payload, use_body=True)
+
+    async def kujira_get_markets(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/markets", payload, use_body=True)
+
+    async def kujira_get_markets_all(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/markets/all", payload, use_body=True)
+
+    async def kujira_get_order_book(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/orderBook", payload, use_body=True)
+
+    async def kujira_get_order_books(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/orderBooks", payload, use_body=True)
+
+    async def kujira_get_order_books_all(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/orderBooks/all", payload, use_body=True)
+
+    async def kujira_get_ticker(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/ticker", payload, use_body=True)
+
+    async def kujira_get_tickers(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/tickers", payload, use_body=True)
+
+    async def kujira_get_tickers_all(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/tickers/all", payload, use_body=True)
+
+    async def kujira_get_balance(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/balance", payload, use_body=True)
+
+    async def kujira_get_balances(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/balances", payload, use_body=True)
+
+    async def kujira_get_balances_all(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/balances/all", payload, use_body=True)
+
+    async def kujira_get_order(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/order", payload, use_body=True)
+
+    async def kujira_get_orders(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/orders", payload, use_body=True)
+
+    async def kujira_post_order(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("post", "chain/kujira/order", payload)
+
+    async def kujira_post_orders(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("post", "chain/kujira/orders", payload)
+
+    async def kujira_delete_order(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("delete", "chain/kujira/order", payload)
+
+    async def kujira_delete_orders(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("delete", "chain/kujira/orders", payload)
+
+    async def kujira_delete_orders_all(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("delete", "chain/kujira/orders/all", payload)
+
+    async def kujira_post_market_withdraw(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("post", "chain/kujira/market/withdraw", payload)
+
+    async def kujira_post_market_withdraws(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("post", "chain/kujira/market/withdraws", payload)
+
+    async def kujira_post_market_withdraws_all(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("post", "chain/kujira/market/withdraws/all", payload)
+
+    async def kujira_get_transaction(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/transaction", payload, use_body=True)
+
+    async def kujira_get_transactions(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/transactions", payload, use_body=True)
+
+    async def kujira_get_wallet_public_key(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/wallet/publicKey", payload, use_body=True)
+
+    async def kujira_get_wallet_public_keys(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/wallet/publicKeys", payload, use_body=True)
+
+    async def kujira_get_block_current(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/block/current", payload, use_body=True)
+
+    async def kujira_get_fees_estimated(
+        self,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request("get", "chain/kujira/fees/estimated", payload, use_body=True)

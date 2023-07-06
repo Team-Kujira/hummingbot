@@ -121,7 +121,10 @@ class GatewayCLOBSPOT(ExchangePyBase):
 
     @property
     def is_cancel_request_in_exchange_synchronous(self) -> bool:
-        return False
+        if hasattr(self._api_data_source, 'is_cancel_request_in_exchange_synchronous'):
+            return self._api_data_source.is_cancel_request_in_exchange_synchronous
+        else:
+            return False
 
     @property
     def is_trading_required(self) -> bool:
@@ -714,3 +717,9 @@ class GatewayCLOBSPOT(ExchangePyBase):
             else self.LONG_POLL_INTERVAL
         )
         return poll_interval
+
+    async def cancel_all(self, timeout_seconds: float) -> List[CancellationResult]:
+        if hasattr(self._api_data_source, 'cancel_all'):
+            return await self._api_data_source.cancel_all(timeout_seconds)
+        else:
+            await super().cancel_all(timeout_seconds)
