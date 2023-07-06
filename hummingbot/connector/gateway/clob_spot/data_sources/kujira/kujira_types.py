@@ -41,38 +41,38 @@ class HTTPMethod(Enum):
 
 
 class Route(Enum):
-    KUJIRA_GET_STATUS = 'kujira_get_status'
-    KUJIRA_GET_TOKEN = 'kujira_get_token'
-    KUJIRA_GET_TOKENS = 'kujira_get_tokens'
-    KUJIRA_GET_TOKENS_ALL = 'kujira_get_tokens_all'
-    KUJIRA_GET_MARKET = 'kujira_get_market'
-    KUJIRA_GET_MARKETS = 'kujira_get_markets'
-    KUJIRA_GET_MARKETS_ALL = 'kujira_get_markets_all'
-    KUJIRA_GET_ORDER_BOOK = 'kujira_get_order_book'
-    KUJIRA_GET_ORDER_BOOKS = 'kujira_get_order_books'
-    KUJIRA_GET_ORDER_BOOKS_ALL = 'kujira_get_order_books_all'
-    KUJIRA_GET_TICKER = 'kujira_get_ticker'
-    KUJIRA_GET_TICKERS = 'kujira_get_tickers'
-    KUJIRA_GET_TICKERS_ALL = 'kujira_get_tickers_all'
-    KUJIRA_GET_BALANCE = 'kujira_get_balance'
-    KUJIRA_GET_BALANCES = 'kujira_get_balances'
-    KUJIRA_GET_BALANCES_ALL = 'kujira_get_balances_all'
-    KUJIRA_GET_ORDER = 'kujira_get_order'
-    KUJIRA_GET_ORDERS = 'kujira_get_orders'
-    KUJIRA_POST_ORDER = 'kujira_post_order'
-    KUJIRA_POST_ORDERS = 'kujira_post_orders'
-    KUJIRA_DELETE_ORDER = 'kujira_delete_order'
-    KUJIRA_DELETE_ORDERS = 'kujira_delete_orders'
-    KUJIRA_DELETE_ORDERS_ALL = 'kujira_delete_orders_all'
-    KUJIRA_POST_MARKET_WITHDRAW = 'kujira_post_market_withdraw'
-    KUJIRA_POST_MARKET_WITHDRAWS = 'kujira_post_market_withdraws'
-    KUJIRA_POST_MARKET_WITHDRAWS_ALL = 'kujira_post_market_withdraws_all'
-    KUJIRA_GET_TRANSACTION = 'kujira_get_transaction'
-    KUJIRA_GET_TRANSACTIONS = 'kujira_get_transactions'
-    KUJIRA_GET_WALLET_PUBLIC_KEY = 'kujira_get_wallet_public_key'
-    KUJIRA_GET_WALLET_PUBLIC_KEYS = 'kujira_get_wallet_public_keys'
-    KUJIRA_GET_BLOCK_CURRENT = 'kujira_get_block_current'
-    KUJIRA_GET_FEES_ESTIMATED = 'kujira_get_fees_estimated'
+    GET_STATUS = (HTTPMethod.GET, 'status'),
+    GET_TOKEN = (HTTPMethod.GET, 'token'),
+    GET_TOKENS = (HTTPMethod.GET, 'tokens'),
+    GET_TOKENS_ALL = (HTTPMethod.GET, 'tokens/all'),
+    GET_MARKET = (HTTPMethod.GET, 'market'),
+    GET_MARKETS = (HTTPMethod.GET, 'markets'),
+    GET_MARKETS_ALL = (HTTPMethod.GET, 'markets/all'),
+    GET_ORDER_BOOK = (HTTPMethod.GET, 'order/book'),
+    GET_ORDER_BOOKS = (HTTPMethod.GET, 'order/books'),
+    GET_ORDER_BOOKS_ALL = (HTTPMethod.GET, 'order/books/all'),
+    GET_TICKER = (HTTPMethod.GET, 'ticker'),
+    GET_TICKERS = (HTTPMethod.GET, 'tickers'),
+    GET_TICKERS_ALL = (HTTPMethod.GET, 'tickers/all'),
+    GET_BALANCE = (HTTPMethod.GET, 'balance'),
+    GET_BALANCES = (HTTPMethod.GET, 'balances'),
+    GET_BALANCES_ALL = (HTTPMethod.GET, 'balances/all'),
+    GET_ORDER = (HTTPMethod.GET, 'order'),
+    GET_ORDERS = (HTTPMethod.GET, 'orders'),
+    POST_ORDER = (HTTPMethod.POST, 'order'),
+    POST_ORDERS = (HTTPMethod.POST, 'orders'),
+    DELETE_ORDER = (HTTPMethod.DELETE, 'order'),
+    DELETE_ORDERS = (HTTPMethod.DELETE, 'orders'),
+    DELETE_ORDERS_ALL = (HTTPMethod.DELETE, 'orders/all'),
+    POST_MARKET_WITHDRAW = (HTTPMethod.POST, 'market/withdraw'),
+    POST_MARKET_WITHDRAWS = (HTTPMethod.POST, 'market/withdraws'),
+    POST_MARKET_WITHDRAWS_ALL = (HTTPMethod.POST, 'market/withdraws/all'),
+    GET_TRANSACTION = (HTTPMethod.GET, 'transaction'),
+    GET_TRANSACTIONS = (HTTPMethod.GET, 'transactions'),
+    GET_WALLET_PUBLIC_KEY = (HTTPMethod.GET, 'wallet/public/key'),
+    GET_WALLET_PUBLIC_KEYS = (HTTPMethod.GET, 'wallet/public/keys'),
+    GET_BLOCK_CURRENT = (HTTPMethod.GET, 'block/current'),
+    GET_FEES_ESTIMATED = (HTTPMethod.GET, 'fees/estimated'),
 
 
 class OrderStatus(Enum):
