@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 import aiohttp
 
 from hummingbot.client.config.security import Security
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_types import HTTPMethod, Route
 from hummingbot.core.data_type.common import OrderType, PositionSide
 from hummingbot.core.data_type.in_flight_order import InFlightOrder
 from hummingbot.core.event.events import TradeType
@@ -1001,6 +1002,14 @@ class GatewayHttpClient:
         }
         return await self.get_balances(**request_payload)
 
+    async def clob_kujira_router(
+        self,
+        method: HTTPMethod,
+        route: Route,
+        payload: Dict[str, Any]
+    ):
+        return await self.api_request(method.value[0], route.value[0], payload, use_body=True)
+
     async def clob_perp_funding_info(
         self,
         chain: str,
@@ -1153,203 +1162,3 @@ class GatewayHttpClient:
             "orderId": exchange_order_id
         }
         return await self.api_request("delete", "clob/perp/orders", request_payload, use_body=True)
-
-    async def kujira_get_status(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira", payload, use_body=True)
-
-    async def kujira_get_token(
-        self,
-        chain: str,
-        network: str,
-        payload: Dict[str, Any]
-    ):
-        request_payload = {
-            "chain": chain,
-            "network": network,
-            **payload
-        }
-
-        return await self.api_request("get", "chain/kujira/token", request_payload, use_body=True)
-
-    async def kujira_get_tokens(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/tokens", payload, use_body=True)
-
-    async def kujira_get_tokens_all(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/tokens/all", payload, use_body=True)
-
-    async def kujira_get_market(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/market", payload, use_body=True)
-
-    async def kujira_get_markets(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/markets", payload, use_body=True)
-
-    async def kujira_get_markets_all(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/markets/all", payload, use_body=True)
-
-    async def kujira_get_order_book(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/orderBook", payload, use_body=True)
-
-    async def kujira_get_order_books(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/orderBooks", payload, use_body=True)
-
-    async def kujira_get_order_books_all(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/orderBooks/all", payload, use_body=True)
-
-    async def kujira_get_ticker(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/ticker", payload, use_body=True)
-
-    async def kujira_get_tickers(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/tickers", payload, use_body=True)
-
-    async def kujira_get_tickers_all(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/tickers/all", payload, use_body=True)
-
-    async def kujira_get_balance(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/balance", payload, use_body=True)
-
-    async def kujira_get_balances(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/balances", payload, use_body=True)
-
-    async def kujira_get_balances_all(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/balances/all", payload, use_body=True)
-
-    async def kujira_get_order(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/order", payload, use_body=True)
-
-    async def kujira_get_orders(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/orders", payload, use_body=True)
-
-    async def kujira_post_order(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("post", "chain/kujira/order", payload)
-
-    async def kujira_post_orders(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("post", "chain/kujira/orders", payload)
-
-    async def kujira_delete_order(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("delete", "chain/kujira/order", payload)
-
-    async def kujira_delete_orders(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("delete", "chain/kujira/orders", payload)
-
-    async def kujira_delete_orders_all(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("delete", "chain/kujira/orders/all", payload)
-
-    async def kujira_post_market_withdraw(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("post", "chain/kujira/market/withdraw", payload)
-
-    async def kujira_post_market_withdraws(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("post", "chain/kujira/market/withdraws", payload)
-
-    async def kujira_post_market_withdraws_all(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("post", "chain/kujira/market/withdraws/all", payload)
-
-    async def kujira_get_transaction(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/transaction", payload, use_body=True)
-
-    async def kujira_get_transactions(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/transactions", payload, use_body=True)
-
-    async def kujira_get_wallet_public_key(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/wallet/publicKey", payload, use_body=True)
-
-    async def kujira_get_wallet_public_keys(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/wallet/publicKeys", payload, use_body=True)
-
-    async def kujira_get_block_current(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/block/current", payload, use_body=True)
-
-    async def kujira_get_fees_estimated(
-        self,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request("get", "chain/kujira/fees/estimated", payload, use_body=True)
