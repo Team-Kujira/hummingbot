@@ -1002,7 +1002,7 @@ class GatewayHttpClient:
         }
         return await self.get_balances(**request_payload)
 
-    async def clob_kujira_router(
+    async def kujira_router(
         self,
         route: Route,
         payload: Dict[str, Any]
