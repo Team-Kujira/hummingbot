@@ -10,6 +10,7 @@ from unittest.mock import patch
 from aiohttp import ClientSession
 from aiounittest import async_test
 
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_types import Route
 from hummingbot.core.data_type.common import OrderType
 from hummingbot.core.event.events import TradeType
 from hummingbot.core.gateway.gateway_http_client import GatewayHttpClient
@@ -56,7 +57,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
             "payerAddress": "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7"
         }
 
-        result: Dict[str, Any] = await GatewayHttpClient.get_instance().kujira_post_order(payload=payload)
+        result: Dict[str, Any] = await GatewayHttpClient.get_instance().kujira_router(Route.POST_ORDER, payload)
 
         self.assertGreater(Decimal(result["id"]), 0)
         self.assertEqual(result["marketName"], "KUJI/DEMO")
@@ -82,7 +83,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
             "marketId": "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh"
         }
 
-        result = await GatewayHttpClient.get_instance().kujira_delete_order(payload=payload)
+        result = await GatewayHttpClient.get_instance().kujira_router(Route.DELETE_ORDER, payload)
 
         self.assertGreater(len(result["id"]), 0)
         self.assertEqual(result["market"]["name"], "KUJI/DEMO")
@@ -104,7 +105,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
             "ownerAddress": "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7"
         }
 
-        result = await GatewayHttpClient.get_instance().kujira_get_order(payload=payload)
+        result = await GatewayHttpClient.get_instance().kujira_router(Route.GET_ORDER, payload)
 
         self.assertGreater(len(result["id"]), 0)
         self.assertEqual(result["market"]["name"], "KUJI/DEMO")
@@ -124,7 +125,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
             "id": "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh",
         }
 
-        result = await GatewayHttpClient.get_instance().kujira_get_market(payload=payload)
+        result = await GatewayHttpClient.get_instance().kujira_router(Route.GET_MARKET, payload)
 
         self.assertEqual(result["id"], "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh")
         self.assertEqual(result["name"], "KUJI/DEMO")
@@ -146,7 +147,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
             "marketId": "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh",
         }
 
-        result = await GatewayHttpClient.get_instance().kujira_get_order_book(payload=payload)
+        result = await GatewayHttpClient.get_instance().kujira_router(Route.GET_ORDER_BOOK, payload)
 
         self.assertEqual(result["market"]["id"], "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh")
         self.assertEqual(len(result["bids"]), 3)
@@ -164,7 +165,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
             "marketId": "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh",
         }
 
-        result = await GatewayHttpClient.get_instance().kujira_get_ticker(payload=payload)
+        result = await GatewayHttpClient.get_instance().kujira_router(Route.GET_TICKER, payload)
 
         self.assertEqual(result["market"]["id"], "kujira1suhgf5svhu4usrurvxzlgn54ksxmn8gljarjtxqnapv8kjnp4nrsqq4jjh")
         self.assertEqual(result["market"]["name"], "KUJI/DEMO")
@@ -183,7 +184,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
             "status": "OPEN"
         }
 
-        result = await GatewayHttpClient.get_instance().kujira_get_orders(payload=payload)
+        result = await GatewayHttpClient.get_instance().kujira_router(Route.GET_ORDERS, payload)
 
         self.assertEqual(len(result), 2)
 
@@ -213,7 +214,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
             "ownerAddress": "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7"
         }
 
-        result = await GatewayHttpClient.get_instance().kujira_delete_orders(payload=payload)
+        result = await GatewayHttpClient.get_instance().kujira_router(Route.DELETE_ORDERS, payload)
 
         self.assertEqual(len(result), 2)
 
@@ -238,7 +239,7 @@ class GatewayHttpClientUnitTest(unittest.TestCase):
             "network": "testnet"
         }
 
-        result = await GatewayHttpClient.get_instance().kujira_get_markets_all(payload=payload)
+        result = await GatewayHttpClient.get_instance().kujira_router(Route.GET_MARKETS_ALL, payload)
 
         self.assertEqual(len(result), 3)
 
