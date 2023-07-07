@@ -28,7 +28,12 @@ from .kujira_helpers import (
     convert_market_name_to_hb_trading_pair,
     generate_hash,
 )
-from .kujira_types import OrderSide as KujiraOrderSide, OrderStatus as KujiraOrderStatus, OrderType as KujiraOrderType
+from .kujira_types import (
+    OrderSide as KujiraOrderSide,
+    OrderStatus as KujiraOrderStatus,
+    OrderType as KujiraOrderType,
+    Route,
+)
 
 
 class KujiraAPIDataSource(CLOBAPIDataSourceBase):
@@ -157,7 +162,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""place order request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.kujira_post_orders(request)
+                response = await self._gateway.clob_kujira_router(Route.POST_ORDERS, request)
 
                 self.logger().debug(f"""place order response:\n "{self._dump(response)}".""")
 
@@ -225,7 +230,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""batch_order_create request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.kujira_post_orders(request)
+                response = await self._gateway.clob_kujira_router(Route.POST_ORDERS, request)
 
                 self.logger().debug(f"""batch_order_create response:\n "{self._dump(request)}".""")
 
@@ -296,7 +301,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                     self.logger().debug(f"""cancel_order request:\n "{self._dump(request)}".""")
 
-                    response = await self._gateway.kujira_delete_order(request)
+                    response = await self._gateway.clob_kujira_router(Route.DELETE_ORDER, request)
 
                     self.logger().debug(f"""cancel_order response:\n "{self._dump(response)}".""")
 
@@ -374,7 +379,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""batch_order_cancel request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.kujira_delete_orders(request)
+                response = await self._gateway.clob_kujira_router(Route.DELETE_ORDERS, request)
 
                 self.logger().debug(f"""batch_order_cancel response:\n "{self._dump(response)}".""")
 
@@ -431,7 +436,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 }
                 self.logger().debug(f"""cancel_all_orders request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.kujira_delete_orders_all(request)
+                response = await self._gateway.clob_kujira_router(Route.DELETE_ORDERS_ALL, request)
 
                 self.logger().debug(f"""cancel_all_orders response:\n "{self._dump(response)}".""")
 
@@ -481,7 +486,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""settle_market_funds request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.kujira_post_market_withdraw(request)
+                response = await self._gateway.clob_kujira_router(Route.POST_MARKET_WITHDRAW, request)
 
                 self.logger().debug(f"""settle_market_funds response:\n "{self._dump(response)}".""")
 
@@ -509,7 +514,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_last_traded_price request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway.kujira_get_ticker(request)
+        response = await self._gateway.clob_kujira_router(Route.GET_TICKER, request)
 
         self.logger().debug(f"""get_last_traded_price response:\n "{self._dump(response)}".""")
 
@@ -533,7 +538,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_order_book_snapshot request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway.kujira_get_order_book(request)
+        response = await self._gateway.clob_kujira_router(Route.GET_ORDER_BOOK, request)
 
         self.logger().debug(f"""get_order_book_snapshot response:\n "{self._dump(response)}".""")
 
@@ -579,7 +584,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_account_balances request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway.kujira_get_balances_all(request)
+        response = await self._gateway.clob_kujira_router(Route.GET_BALANCES_ALL, request)
 
         self.logger().debug(f"""get_account_balances response:\n "{self._dump(response)}".""")
 
@@ -626,7 +631,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""get_order_status_update request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.kujira_get_order(request)
+                response = await self._gateway.clob_kujira_router(Route.GET_ORDER, request)
 
                 self.logger().debug(f"""get_order_status_update response:\n "{self._dump(response)}".""")
 
@@ -692,7 +697,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                     self.logger().debug(f"""get_all_order_fills request:\n "{self._dump(request)}".""")
 
-                    response = await self._gateway.kujira_get_order(request)
+                    response = await self._gateway.clob_kujira_router(Route.GET_ORDER, request)
 
                     self.logger().debug(f"""get_all_order_fills response:\n "{self._dump(response)}".""")
 
@@ -797,13 +802,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             self.logger().debug(f"""_update_markets request:\n "{self._dump(request)}".""")
 
-            response = await self._gateway.kujira_get_markets(request)
+            response = await self._gateway.clob_kujira_router(Route.GET_MARKETS, request)
 
             self.logger().debug(f"""_update_markets response:\n "{self._dump(response)}".""")
         else:
             self.logger().debug(f"""_update_markets request:\n "{self._dump(request)}".""")
 
-            response = await self._gateway.kujira_get_markets_all(request)
+            response = await self._gateway.clob_kujira_router(Route.GET_MARKETS_ALL, request)
 
             self.logger().debug(f"""_update_markets response:\n "{self._dump(response)}".""")
 
