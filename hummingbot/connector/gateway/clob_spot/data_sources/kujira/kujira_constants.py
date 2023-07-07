@@ -8,3 +8,5 @@ KUJIRA_NATIVE_TOKEN = DotMap({
 }, _dynamic=False)
 
 CONNECTOR = "kujira"
+
+MARKETS_UPDATE_INTERVAL = 8 * 60 * 60
