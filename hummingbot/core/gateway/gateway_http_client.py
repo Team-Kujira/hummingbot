@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 import aiohttp
 
 from hummingbot.client.config.security import Security
-from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_types import Route
 from hummingbot.core.data_type.common import OrderType, PositionSide
 from hummingbot.core.data_type.in_flight_order import InFlightOrder
 from hummingbot.core.event.events import TradeType
@@ -1001,18 +1000,6 @@ class GatewayHttpClient:
             "token_symbols": [],
         }
         return await self.get_balances(**request_payload)
-
-    async def kujira_router(
-        self,
-        route: Route,
-        payload: Dict[str, Any]
-    ):
-        return await self.api_request(
-            route.value[0][0],
-            f"""chain/kujira/{route.value[0][1]}""",
-            payload,
-            use_body=True
-        )
 
     async def clob_perp_funding_info(
         self,
