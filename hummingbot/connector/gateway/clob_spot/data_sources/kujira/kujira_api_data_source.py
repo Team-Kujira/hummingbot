@@ -156,10 +156,12 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""clob_place_order response:\n "{self._dump(response)}".""")
 
-                transaction_hash = response
+                transaction_hash = response["txHash"]
+
+                order.exchange_order_id = response["id"]
 
                 self.logger().debug(
-                    f"""Order "{order.client_order_id}" successfully placed. Transaction hash: "{transaction_hash}"."""
+                    f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" successfully placed. Transaction hash: "{transaction_hash}"."""
                 )
             except Exception as exception:
                 self.logger().debug(
@@ -179,7 +181,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self.logger().debug("place_order: end")
 
-        # TODO this will always return None even when using super().batch_order_create like Dexalot does!!!
         return order.exchange_order_id, misc_updates
 
     async def batch_order_create(self, orders_to_create: List[GatewayInFlightOrder]) -> List[PlaceOrderResult]:
@@ -220,7 +221,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""clob_batch_order_modify response:\n "{self._dump(response)}".""")
 
-                transaction_hash = response
+                transaction_hash = response["txHash"]
 
                 self.logger().debug(
                     f"""Orders "{client_ids}" successfully placed. Transaction hash: {transaction_hash}."""
@@ -237,15 +238,14 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     f"""Placement of orders "{client_ids}" failed. Invalid transaction hash: "{transaction_hash}"."""
                 )
 
-        # TODO The exchange order id will always be None!!!
         place_order_results = []
-        for order_to_create in orders_to_create:
+        for order_to_create, exchange_order_id in zip(orders_to_create, response["ids"]):
             order_to_create.exchange_order_id = None
 
             place_order_results.append(PlaceOrderResult(
                 update_timestamp=time(),
                 client_order_id=order_to_create.client_order_id,
-                exchange_order_id=None,
+                exchange_order_id=exchange_order_id,
                 trading_pair=order_to_create.trading_pair,
                 misc_updates={
                     "creation_transaction_hash": transaction_hash,
@@ -265,7 +265,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             self._check_markets_initialized() or await self._update_markets()
 
-            # TODO How to make this to work?!!!
             await order.get_exchange_order_id()
 
             transaction_hash = None
@@ -287,7 +286,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                     self.logger().debug(f"""clob_cancel_order response:\n "{self._dump(response)}".""")
 
-                    transaction_hash = response
+                    transaction_hash = response["txHash"]
 
                     if transaction_hash in (None, ""):
                         raise Exception(
@@ -363,7 +362,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""clob_batch_order_modify response:\n "{self._dump(response)}".""")
 
-                transaction_hash = response
+                transaction_hash = response["txHash"]
 
                 self.logger().debug(
                     f"""Orders "{client_ids}" / "{ids}" successfully cancelled. Transaction hash(es): "{transaction_hash}"."""
@@ -402,7 +401,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         async with self._locks.cancel_all_orders:
             try:
-
                 request = {
                     "connector": self._connector,
                     "chain": self._chain,
@@ -430,7 +428,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""cancel_all_orders request:\n "{self._dump(request)}".""")
 
-                transaction_hash = response
+                transaction_hash = response["txHash"]
 
                 self.logger().debug(
                     f"""Orders "{orders_ids}" successfully cancelled. Transaction hash(es): "{transaction_hash}"."""
