@@ -102,7 +102,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         await self._update_markets()
 
-        await self.cancel_all_orders()
+        # await self.cancel_all_orders()
 
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
             coro=self._update_markets_loop()
@@ -114,7 +114,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._tasks.update_markets and self._tasks.update_markets.cancel()
         self._tasks.update_markets = None
 
-        await self.cancel_all_orders()
+        # await self.cancel_all_orders()
 
         self.logger().debug("stop: end")
 
@@ -488,10 +488,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         bids = []
         asks = []
-        for bid in order_book.bids:
+        for bid in order_book.buys:
             bids.append((Decimal(bid.price) * price_scale, Decimal(bid.quantity) * size_scale))
 
-        for ask in order_book.asks:
+        for ask in order_book.sells:
             asks.append((Decimal(ask.price) * price_scale, Decimal(ask.quantity) * size_scale))
 
         snapshot = OrderBookMessage(
@@ -631,9 +631,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                     self.logger().debug(f"""get_clob_order_status_updates response:\n "{self._dump(response)}".""")
 
-                    order = DotMap(response, _dynamic=False)["orders"][0]
+                    orders = DotMap(response, _dynamic=False)["orders"]
 
-                    if order:
+                    order = None
+                    if len(orders):
+                        order = orders[0]
+
+                    if order is not None:
                         order_status = KujiraOrderStatus.to_hummingbot(KujiraOrderStatus.from_name(order.state))
                     else:
                         order_status = in_flight_order.current_state
@@ -810,7 +814,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             self.logger().debug("_update_markets_loop: end loop")
 
     async def cancel_all(self, _timeout_seconds: float) -> List[CancellationResult]:
-        return await self.cancel_all_orders()
+        # return await self.cancel_all_orders()
+        pass
 
     async def _check_if_order_failed_based_on_transaction(
         self,
