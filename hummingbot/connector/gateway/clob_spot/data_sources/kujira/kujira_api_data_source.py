@@ -12,6 +12,7 @@ from hummingbot.connector.gateway.clob_spot.data_sources.clob_api_data_source_ba
 from hummingbot.connector.gateway.common_types import CancelOrderResult, PlaceOrderResult
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.trading_rule import TradingRule
+from hummingbot.core.data_type import in_flight_order
 from hummingbot.core.data_type.cancellation_result import CancellationResult
 from hummingbot.core.data_type.common import OrderType
 from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate, TradeUpdate
@@ -138,26 +139,37 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         async with self._locks.place_order:
             try:
-                request = {
-                    "chain": self._chain,
-                    "network": self._network,
-                    "connector": self._connector,
-                    "orders": [{
-                        "clientId": order.client_order_id,
-                        "marketId": self._market.id,
-                        "marketName": self._market.name,
-                        "ownerAddress": self._owner_address,
-                        "side": KujiraOrderSide.from_hummingbot(order.trade_type).value[0],
-                        "price": str(order.price),
-                        "amount": str(order.amount),
-                        "type": KujiraOrderType.from_hummingbot(order.order_type).value[0],
-                        "payerAddress": self._payer_address,
-                    }]
-                }
+                # request = {
+                #     "chain": self._chain,
+                #     "network": self._network,
+                #     "connector": self._connector,
+                #     "orders": [{
+                #         "clientId": order.client_order_id,
+                #         "marketId": self._market.id,
+                #         "marketName": self._market.name,
+                #         "ownerAddress": self._owner_address,
+                #         "side": KujiraOrderSide.from_hummingbot(order.trade_type).value[0],
+                #         "price": str(order.price),
+                #         "amount": str(order.amount),
+                #         "type": KujiraOrderType.from_hummingbot(order.order_type).value[0],
+                #         "payerAddress": self._payer_address,
+                #     }]
+                # }
 
-                self.logger().debug(f"""place order request:\n "{self._dump(request)}".""")
+                # self.logger().debug(f"""place order request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.clob_place_order(Route.POST_ORDERS, request)
+                response = await self._gateway.clob_place_order(
+                    connector=self._connector,
+                    chain=self._chain,
+                    network=self._network,
+                    trading_pair=self._market.id,
+                    address=self._owner_address,
+                    trade_type=KujiraOrderSide.from_hummingbot(order.trade_type).value[0],
+                    order_type=KujiraOrderType.from_hummingbot(order.order_type).value[0],
+                    price=order.price,
+                    size=order.amount,
+                    client_order_id=order.client_order_id,
+                )
 
                 self.logger().debug(f"""place order response:\n "{self._dump(response)}".""")
 
@@ -194,24 +206,32 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self._check_markets_initialized() or await self._update_markets()
 
-        candidate_orders = []
+        candidate_orders = [in_flight_order]
         client_ids = []
         for order_to_create in orders_to_create:
             order_to_create.client_order_id = generate_hash(order_to_create)
             client_ids.append(order_to_create.client_order_id)
 
-            candidate_order = {
-                "clientId": order_to_create.client_order_id,
-                "marketId": self._market.id,
-                "marketName": self._market.name,
-                "ownerAddress": self._owner_address,
-                "side": KujiraOrderSide.from_hummingbot(order_to_create.trade_type).value[0],
-                "price": str(order_to_create.price),
-                "amount": str(order_to_create.amount),
-                "type": KujiraOrderType.from_hummingbot(order_to_create.order_type).value[0],
-                "payerAddress": self._payer_address,
-            }
+            # candidate_order = {
+            #     "clientId": order_to_create.client_order_id,
+            #     "marketId": self._market.id,
+            #     "marketName": self._market.name,
+            #     "ownerAddress": self._owner_address,
+            #     "side": KujiraOrderSide.from_hummingbot(order_to_create.trade_type).value[0],
+            #     "price": str(order_to_create.price),
+            #     "amount": str(order_to_create.amount),
+            #     "type": KujiraOrderType.from_hummingbot(order_to_create.order_type).value[0],
+            #     "payerAddress": self._payer_address,
+            # }
 
+            candidate_order = in_flight_order.InFlightOrder(
+                amount=order_to_create.amount,
+                client_order_id=order_to_create.client_order_id,
+                creation_timestamp=0, # TODO
+                order_type=KujiraOrderType.from_hummingbot(order_to_create.order_type).value[0],
+                trade_type=KujiraOrderSide.from_hummingbot(order_to_create.trade_type).value[0],
+                trading_pair=self._market.id,
+            )
             candidate_orders.append(candidate_order)
 
         async with self._locks.place_orders:
@@ -225,9 +245,16 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""batch_order_create request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.kujira_router(Route.POST_ORDERS, request)
+                response = await self._gateway.clob_batch_order_modify(
+                    connector=self._connector,
+                    chain=self._chain,
+                    network=self._network,
+                    address=self._owner_address,
+                    orders_to_create=candidate_orders,
+                    orders_to_cancel=[],
+                )
 
-                self.logger().debug(f"""batch_order_create response:\n "{self._dump(request)}".""")
+                self.logger().debug(f"""batch_order_create response:\n "{self._dump(response)}".""")
 
                 placed_orders = DotMap(response.values(), _dynamic=False)
 
@@ -285,18 +312,25 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             async with self._locks.cancel_order:
                 try:
-                    request = {
-                        "chain": self._chain,
-                        "network": self._network,
-                        "connector": self._connector,
-                        "id": order.exchange_order_id,
-                        "marketId": self._market.id,
-                        "ownerAddress": self._owner_address,
-                    }
+                    # request = {
+                    #     "chain": self._chain,
+                    #     "network": self._network,
+                    #     "connector": self._connector,
+                    #     "id": order.exchange_order_id,
+                    #     "marketId": self._market.id,
+                    #     "ownerAddress": self._owner_address,
+                    # }
 
-                    self.logger().debug(f"""cancel_order request:\n "{self._dump(request)}".""")
+                    # self.logger().debug(f"""cancel_order request:\n "{self._dump(request)}".""")
 
-                    response = await self._gateway.kujira_router(Route.DELETE_ORDER, request)
+                    response = await self._gateway.clob_cancel_order(
+                        connector=self._connector,
+                        chain=self._chain,
+                        network=self._network,
+                        trading_pair=order.trading_pair,
+                        address=self._owner_address,
+                        exchange_order_id=order.exchange_order_id,
+                    )
 
                     self.logger().debug(f"""cancel_order response:\n "{self._dump(response)}".""")
 
@@ -363,18 +397,25 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         async with self._locks.cancel_orders:
             try:
 
-                request = {
-                    "chain": self._chain,
-                    "network": self._network,
-                    "connector": self._connector,
-                    "ids": ids,
-                    "marketId": self._market.id,
-                    "ownerAddress": self._owner_address,
-                }
+                # request = {
+                #     "chain": self._chain,
+                #     "network": self._network,
+                #     "connector": self._connector,
+                #     "ids": ids,
+                #     "marketId": self._market.id,
+                #     "ownerAddress": self._owner_address,
+                # }
 
-                self.logger().debug(f"""batch_order_cancel request:\n "{self._dump(request)}".""")
+                # self.logger().debug(f"""batch_order_cancel request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.kujira_router(Route.DELETE_ORDERS, request)
+                response = await self._gateway.clob_batch_order_modify(
+                    connector=self._connector,
+                    chain=self._chain,
+                    network=self._network,
+                    address=self._owner_address,
+                    orders_to_create=[],
+                    orders_to_cancel=found_orders_to_cancel,
+                )
 
                 self.logger().debug(f"""batch_order_cancel response:\n "{self._dump(response)}".""")
 
@@ -432,6 +473,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 self.logger().debug(f"""cancel_all_orders request:\n "{self._dump(request)}".""")
 
                 response = await self._gateway.kujira_router(Route.DELETE_ORDERS_ALL, request)
+                # TODO - There is no cancel_all_orders in gateway_http_client and it is not possible
+                #  to filter orders belonging to an owner to iterate because canceling the GET /orderbook
+                #  response does not allow returning the owner
+
 
                 self.logger().debug(f"""cancel_all_orders response:\n "{self._dump(response)}".""")
 
@@ -524,16 +569,21 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def get_order_book_snapshot(self, trading_pair: str) -> OrderBookMessage:
         self.logger().debug("get_order_book_snapshot: start")
 
-        request = {
-            "chain": self._chain,
-            "network": self._network,
-            "connector": self._connector,
-            "marketId": self._market.id,
-        }
+        # request = {
+        #     "chain": self._chain,
+        #     "network": self._network,
+        #     "connector": self._connector,
+        #     "marketId": self._market.id,
+        # }
 
-        self.logger().debug(f"""get_order_book_snapshot request:\n "{self._dump(request)}".""")
+        # self.logger().debug(f"""get_order_book_snapshot request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway.kujira_router(Route.GET_ORDER_BOOK, request)
+        response = await self._gateway.get_clob_orderbook_snapshot(
+            trading_pair=self._market.id,
+            connector=self._connector,
+            chain=self._chain,
+            network=self._network,
+        )
 
         self.logger().debug(f"""get_order_book_snapshot response:\n "{self._dump(response)}".""")
 
@@ -579,7 +629,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_account_balances request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway.get_balances(Route.GET_BALANCES_ALL, request)
+        response = await self._gateway.get_balances(
+            chain=self._chain,
+            network=self._network,
+            address=self._owner_address,
+            token_symbols=[self._market.name.split("-")[0], self._market.name.split("-")[1]],
+            connector=self._connector,
+        )
 
         self.logger().debug(f"""get_account_balances response:\n "{self._dump(response)}".""")
 
@@ -615,18 +671,25 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             if active_order.current_state != OrderState.CANCELED:
                 await in_flight_order.get_exchange_order_id()
 
-                request = {
-                    "chain": self._chain,
-                    "network": self._network,
-                    "connector": self._connector,
-                    "id": in_flight_order.exchange_order_id,
-                    "marketId": self._market.id,
-                    "ownerAddress": self._owner_address,
-                }
+                # request = {
+                #     "chain": self._chain,
+                #     "network": self._network,
+                #     "connector": self._connector,
+                #     "id": in_flight_order.exchange_order_id,
+                #     "marketId": self._market.id,
+                #     "ownerAddress": self._owner_address,
+                # }
 
-                self.logger().debug(f"""get_order_status_update request:\n "{self._dump(request)}".""")
+                # self.logger().debug(f"""get_order_status_update request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.kujira_router(Route.GET_ORDER, request)
+                response = await self._gateway.get_clob_order_status_updates(
+                    connector=self._connector,
+                    chain=self._chain,
+                    network=self._network,
+                    trading_pair=self._market.id,
+                    address=self._owner_address,
+                    exchange_order_id=in_flight_order.exchange_order_id,
+                )
 
                 self.logger().debug(f"""get_order_status_update response:\n "{self._dump(response)}".""")
 
@@ -790,6 +853,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "chain": self._chain,
             "network": self._network,
             "connector": self._connector,
+            "trading_pair": self._market.id
         }
 
         if self._markets_names:
@@ -797,7 +861,16 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             self.logger().debug(f"""_update_markets request:\n "{self._dump(request)}".""")
 
-            response = await self._gateway.get_clob_markets(Route.GET_MARKETS, request)
+            response = await self._gateway.get_clob_markets(
+                connector=self._connector,
+                chain=self._chain,
+                network=self._network,
+                trading_pair=self._market.name #
+            )
+            # TODO - Market name not supported yet, because the CLOB /markets receives a string
+            #  for market in the request, so that when we use the market id, we cannot use the market
+            #  name. Obs.: It would be possible to put everything in the same string and then do the split.
+
 
             self.logger().debug(f"""_update_markets response:\n "{self._dump(response)}".""")
         else:
