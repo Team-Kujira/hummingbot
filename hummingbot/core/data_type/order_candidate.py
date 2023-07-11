@@ -27,8 +27,6 @@ class OrderCandidate:
     It also provides logic to adjust the order size, the collateral values, and the return based on
     a dictionary of currently available assets in the user account.
     """
-    id: Optional[str] = field(default=None, init=False)
-    client_id: Optional[str] = field(default=None, init=False)
     trading_pair: str
     is_maker: bool
     order_type: OrderType
