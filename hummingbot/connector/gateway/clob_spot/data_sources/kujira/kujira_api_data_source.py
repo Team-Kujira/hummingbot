@@ -24,11 +24,7 @@ from hummingbot.core.network_iterator import NetworkStatus
 from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
 
 from .kujira_constants import CONNECTOR, KUJIRA_NATIVE_TOKEN, MARKETS_UPDATE_INTERVAL
-from .kujira_helpers import (
-    convert_hb_trading_pair_to_market_name,
-    convert_market_name_to_hb_trading_pair,
-    generate_hash,
-)
+from .kujira_helpers import convert_market_name_to_hb_trading_pair, generate_hash
 from .kujira_types import OrderStatus as KujiraOrderStatus
 
 
@@ -55,14 +51,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._trading_pair = None
         if self._trading_pairs:
             self._trading_pair = self._trading_pairs[0]
-
-        self._markets_names = [convert_hb_trading_pair_to_market_name(trading_pair) for trading_pair in trading_pairs]
-
-        self._market_name = None
-        if self._markets_names:
-            self._market_name = self._markets_names[0]
-
-        self._markets_name_id_map = None
 
         self._markets = None
         self._market = None
@@ -141,7 +129,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     "connector": self._connector,
                     "chain": self._chain,
                     "network": self._network,
-                    "trading_pair": self._market_name,
+                    "trading_pair": self._trading_pair,
                     "address": self._owner_address,
                     "trade_type": order.trade_type,
                     "order_type": order.order_type,
@@ -200,7 +188,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 creation_timestamp=0,
                 order_type=order_to_create.order_type,
                 trade_type=order_to_create.trade_type,
-                trading_pair=self._market_name,
+                trading_pair=self._trading_pair,
             )
             candidate_orders.append(candidate_order)
 
@@ -402,7 +390,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         async with self._locks.cancel_all_orders:
             try:
                 request = {
-                    "trading_pair": self._market_name,
+                    "trading_pair": self._trading_pair,
                     "chain": self._chain,
                     "network": self._network,
                     "connector": self._connector,
@@ -458,7 +446,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "connector": self._connector,
             "chain": self._chain,
             "network": self._network,
-            "trading_pair": self._market_name,
+            "trading_pair": self._trading_pair,
         }
 
         self.logger().debug(f"""get_clob_ticker request:\n "{self._dump(request)}".""")
@@ -467,7 +455,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_clob_ticker response:\n "{self._dump(response)}".""")
 
-        ticker = DotMap(response, _dynamic=False).markets[self._market_name]
+        ticker = DotMap(response, _dynamic=False).markets[self._trading_pair]
 
         ticker_price = Decimal(ticker.price)
 
@@ -479,7 +467,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self.logger().debug("get_order_book_snapshot: start")
 
         request = {
-            "trading_pair": self._market_name,
+            "trading_pair": self._trading_pair,
             "connector": self._connector,
             "chain": self._chain,
             "network": self._network,
@@ -528,9 +516,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "chain": self._chain,
             "network": self._network,
             "address": self._owner_address,
-            "token_symbols": [self._market_name.split("-")[0], self._market_name.split("-")[1], KUJIRA_NATIVE_TOKEN],
             "connector": self._connector,
         }
+
+        if self._trading_pair:
+            request["token_symbols"] = [self._trading_pair.split("-")[0], self._trading_pair.split("-")[1], KUJIRA_NATIVE_TOKEN]
+        else:
+            request["token_symbols"] = []
 
         self.logger().debug(f"""get_balances request:\n "{self._dump(request)}".""")
 
@@ -561,7 +553,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 await in_flight_order.get_exchange_order_id()
 
                 request = {
-                    "trading_pair": self._market_name,
+                    "trading_pair": self._trading_pair,
                     "chain": self._chain,
                     "network": self._network,
                     "connector": self._connector,
@@ -625,7 +617,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     trade_update = None
 
                     request = {
-                        "trading_pair": self._market_name,
+                        "trading_pair": self._trading_pair,
                         "chain": self._chain,
                         "network": self._network,
                         "connector": self._connector,
@@ -740,8 +732,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "network": self._network,
         }
 
-        if self._market_name:
-            request["trading_pair"] = self._market_name
+        if self._trading_pair:
+            request["trading_pair"] = self._trading_pair
 
         self.logger().debug(f"""get_clob_markets request:\n "{self._dump(request)}".""")
 
@@ -749,10 +741,10 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_clob_markets response:\n "{self._dump(response)}".""")
 
-        self._markets = DotMap(response, _dynamic=False)["markets"]
+        self._markets = DotMap(response, _dynamic=False).markets
 
-        if self._market_name:
-            self._market = self._markets[self._market_name]
+        if self._trading_pair:
+            self._market = self._markets[self._trading_pair]
 
         self.logger().debug("_update_markets: end")
 
