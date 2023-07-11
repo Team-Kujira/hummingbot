@@ -411,11 +411,11 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     "address": self._owner_address,
                 }
 
-                # TODO We need to make our API answer with all orders when no one is informed!!!
                 response = await self._gateway.get_clob_order_status_updates(**request)
 
-                # TODO Extract the ids from the response!!!
-                all_open_orders_ids = []
+                orders = DotMap(response, _dynamic=False).orders
+
+                orders_ids = [order.id for order in orders]
 
                 request = {
                     "connector": self._connector,
@@ -423,7 +423,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     "network": self._network,
                     "address": self._owner_address,
                     "orders_to_create": [],
-                    "orders_to_cancel": all_open_orders_ids,
+                    "orders_to_cancel": orders_ids,
                 }
 
                 response = await self._gateway.clob_batch_order_modify(**request)
@@ -433,7 +433,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                 transaction_hash = response
 
                 self.logger().debug(
-                    f"""Orders "{all_open_orders_ids}" successfully cancelled. Transaction hash(es): "{transaction_hash}"."""
+                    f"""Orders "{orders_ids}" successfully cancelled. Transaction hash(es): "{transaction_hash}"."""
                 )
             except Exception as exception:
                 self.logger().debug(
@@ -442,9 +442,9 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 raise exception
 
-            if transaction_hash in (None, "") and all_open_orders_ids:
+            if transaction_hash in (None, "") and orders_ids:
                 raise RuntimeError(
-                    f"""Cancellation of orders "{all_open_orders_ids}" failed. Invalid transaction hash: "{transaction_hash}"."""
+                    f"""Cancellation of orders "{orders_ids}" failed. Invalid transaction hash: "{transaction_hash}"."""
                 )
 
         cancel_order_results = []
