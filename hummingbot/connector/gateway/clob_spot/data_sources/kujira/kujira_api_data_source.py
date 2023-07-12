@@ -102,7 +102,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         await self._update_markets()
 
-        # await self.cancel_all_orders()
+        await self.cancel_all_orders()
 
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
             coro=self._update_markets_loop()
@@ -114,7 +114,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._tasks.update_markets and self._tasks.update_markets.cancel()
         self._tasks.update_markets = None
 
-        # await self.cancel_all_orders()
+        await self.cancel_all_orders()
 
         self.logger().debug("stop: end")
 
@@ -344,7 +344,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     "orders_to_cancel": found_orders_to_cancel,
                 }
 
-                self.logger().debug(f"""clob_batch_order_modify request:\n "{self._dump(request)}".""")
+                self.logger().debug(f"""clob_batch_order_moodify request:\n "{self._dump(request)}".""")
 
                 response = await self._gateway.clob_batch_order_modify(**request)
 
@@ -395,32 +395,11 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     "network": self._network,
                     "connector": self._connector,
                     "address": self._owner_address,
+                    "exchange_order_id": None,
                 }
 
-                response = await self._gateway.get_clob_order_status_updates(**request)
+                await self._gateway.clob_cancel_order(**request)
 
-                orders = DotMap(response, _dynamic=False).orders
-
-                orders_ids = [order.id for order in orders]
-
-                request = {
-                    "connector": self._connector,
-                    "chain": self._chain,
-                    "network": self._network,
-                    "address": self._owner_address,
-                    "orders_to_create": [],
-                    "orders_to_cancel": orders_ids,
-                }
-
-                response = await self._gateway.clob_batch_order_modify(**request)
-
-                self.logger().debug(f"""cancel_all_orders request:\n "{self._dump(request)}".""")
-
-                transaction_hash = response["txHash"]
-
-                self.logger().debug(
-                    f"""Orders "{orders_ids}" successfully cancelled. Transaction hash(es): "{transaction_hash}"."""
-                )
             except Exception as exception:
                 self.logger().debug(
                     """Cancellation of all orders failed."""
@@ -428,16 +407,9 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 raise exception
 
-            if transaction_hash in (None, "") and orders_ids:
-                raise RuntimeError(
-                    f"""Cancellation of orders "{orders_ids}" failed. Invalid transaction hash: "{transaction_hash}"."""
-                )
-
-        cancel_order_results = []
-
         self.logger().debug("cancel_all_orders: end")
 
-        return cancel_order_results
+        return []
 
     async def get_last_traded_price(self, trading_pair: str) -> Decimal:
         self.logger().debug("get_last_traded_price: start")
@@ -814,8 +786,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             self.logger().debug("_update_markets_loop: end loop")
 
     async def cancel_all(self, _timeout_seconds: float) -> List[CancellationResult]:
-        # return await self.cancel_all_orders()
-        pass
+        return await self.cancel_all_orders()
 
     async def _check_if_order_failed_based_on_transaction(
         self,
