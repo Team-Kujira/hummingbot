@@ -307,7 +307,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             order.current_state = OrderState.CANCELED
 
             return True, misc_updates
-        return True, DotMap({}, _dynamic=False)
+        return False, DotMap({}, _dynamic=False)
 
     async def batch_order_cancel(self, orders_to_cancel: List[GatewayInFlightOrder]) -> List[CancelOrderResult]:
         self.logger().debug("batch_order_cancel: start")
