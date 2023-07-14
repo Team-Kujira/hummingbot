@@ -248,7 +248,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def cancel_order(self, order: GatewayInFlightOrder) -> Tuple[bool, Optional[Dict[str, Any]]]:
         active_order = self._gateway_order_tracker.active_orders.get(order.client_order_id)
 
-        if active_order and active_order.current_state != OrderState.CANCELED:
+        if active_order and active_order.current_state != OrderState.CANCELED and active_order.current_state != OrderState.FILLED:
             self.logger().debug("cancel_order: start")
 
             self._check_markets_initialized() or await self._update_markets()
