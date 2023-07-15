@@ -148,6 +148,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
                 order.exchange_order_id = response["id"]
 
+                order.current_state = OrderState.CREATED
+
                 self.logger().debug(
                     f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" successfully placed. Transaction hash: "{transaction_hash}"."""
                 )
@@ -248,7 +250,21 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
     async def cancel_order(self, order: GatewayInFlightOrder) -> Tuple[bool, Optional[Dict[str, Any]]]:
         active_order = self._gateway_order_tracker.active_orders.get(order.client_order_id)
 
-        if active_order and active_order.current_state != OrderState.CANCELED and active_order.current_state != OrderState.FILLED:
+        fillable = self._gateway_order_tracker.all_fillable_orders_by_exchange_order_id.get(
+            active_order.exchange_order_id
+        )
+
+        if order.is_open and (
+                fillable is not None
+        ) and (
+                active_order
+        ) and (
+                active_order.current_state != OrderState.CANCELED
+        ) and (
+                active_order.current_state != OrderState.FILLED
+        ) and (
+                active_order.current_state != OrderState.PENDING_CREATE
+        ):
             self.logger().debug("cancel_order: start")
 
             self._check_markets_initialized() or await self._update_markets()
@@ -305,6 +321,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             self.logger().debug("cancel_order: end")
 
             order.current_state = OrderState.CANCELED
+
+            # order.cancel_tx_hash = transaction_hash
 
             return True, misc_updates
         return False, DotMap({}, _dynamic=False)
