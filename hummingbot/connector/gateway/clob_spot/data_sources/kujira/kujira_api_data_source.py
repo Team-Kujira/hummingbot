@@ -13,7 +13,6 @@ from hummingbot.connector.gateway.common_types import CancelOrderResult, PlaceOr
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.trading_rule import TradingRule
 from hummingbot.core.data_type import in_flight_order
-from hummingbot.core.data_type.cancellation_result import CancellationResult
 from hummingbot.core.data_type.common import OrderType
 from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate, TradeUpdate
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
@@ -66,7 +65,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "place_orders": asyncio.Lock(),
             "cancel_order": asyncio.Lock(),
             "cancel_orders": asyncio.Lock(),
-            "cancel_all_orders": asyncio.Lock(),
+            # "cancel_all_orders": asyncio.Lock(),
             "settle_market_funds": asyncio.Lock(),
             "settle_markets_funds": asyncio.Lock(),
             "settle_all_markets_funds": asyncio.Lock(),
@@ -102,7 +101,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         await self._update_markets()
 
-        await self.cancel_all_orders()
+        # await self.cancel_all_orders()
 
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
             coro=self._update_markets_loop()
@@ -114,7 +113,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._tasks.update_markets and self._tasks.update_markets.cancel()
         self._tasks.update_markets = None
 
-        await self.cancel_all_orders()
+        # await self.cancel_all_orders()
 
         self.logger().debug("stop: end")
 
@@ -400,34 +399,34 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         return cancel_order_results
 
-    async def cancel_all_orders(self) -> List[CancellationResult]:
-        self.logger().debug("cancel_all_orders: start")
-
-        self._check_markets_initialized() or await self._update_markets()
-
-        async with self._locks.cancel_all_orders:
-            try:
-                request = {
-                    "trading_pair": self._trading_pair,
-                    "chain": self._chain,
-                    "network": self._network,
-                    "connector": self._connector,
-                    "address": self._owner_address,
-                    "exchange_order_id": None,
-                }
-
-                await self._gateway.clob_cancel_order(**request)
-
-            except Exception as exception:
-                self.logger().debug(
-                    """Cancellation of all orders failed."""
-                )
-
-                raise exception
-
-        self.logger().debug("cancel_all_orders: end")
-
-        return []
+    # async def cancel_all_orders(self) -> List[CancellationResult]:
+    #     self.logger().debug("cancel_all_orders: start")
+    #
+    #     self._check_markets_initialized() or await self._update_markets()
+    #
+    #     async with self._locks.cancel_all_orders:
+    #         try:
+    #             request = {
+    #                 "trading_pair": self._trading_pair,
+    #                 "chain": self._chain,
+    #                 "network": self._network,
+    #                 "connector": self._connector,
+    #                 "address": self._owner_address,
+    #                 "exchange_order_id": None,
+    #             }
+    #
+    #             await self._gateway.clob_cancel_order(**request)
+    #
+    #         except Exception as exception:
+    #             self.logger().debug(
+    #                 """Cancellation of all orders failed."""
+    #             )
+    #
+    #             raise exception
+    #
+    #     self.logger().debug("cancel_all_orders: end")
+    #
+    #     return []
 
     async def get_last_traded_price(self, trading_pair: str) -> Decimal:
         self.logger().debug("get_last_traded_price: start")
@@ -803,8 +802,9 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             self.logger().debug("_update_markets_loop: end loop")
 
-    async def cancel_all(self, _timeout_seconds: float) -> List[CancellationResult]:
-        return await self.cancel_all_orders()
+    # async def cancel_all(self, _timeout_seconds: float) -> List[
+    # ]:
+    #     return await self.cancel_all_orders()
 
     async def _check_if_order_failed_based_on_transaction(
         self,
