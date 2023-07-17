@@ -65,7 +65,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             "place_orders": asyncio.Lock(),
             "cancel_order": asyncio.Lock(),
             "cancel_orders": asyncio.Lock(),
-            # "cancel_all_orders": asyncio.Lock(),
             "settle_market_funds": asyncio.Lock(),
             "settle_markets_funds": asyncio.Lock(),
             "settle_all_markets_funds": asyncio.Lock(),
@@ -101,8 +100,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         await self._update_markets()
 
-        # await self.cancel_all_orders()
-
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
             coro=self._update_markets_loop()
         )
@@ -112,8 +109,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self.logger().debug("stop: start")
         self._tasks.update_markets and self._tasks.update_markets.cancel()
         self._tasks.update_markets = None
-
-        # await self.cancel_all_orders()
 
         self.logger().debug("stop: end")
 
@@ -321,7 +316,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
             order.current_state = OrderState.CANCELED
 
-            # order.cancel_tx_hash = transaction_hash
+            order.cancel_tx_hash = transaction_hash
 
             return True, misc_updates
         return False, DotMap({}, _dynamic=False)
@@ -398,35 +393,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self.logger().debug("batch_order_cancel: end")
 
         return cancel_order_results
-
-    # async def cancel_all_orders(self) -> List[CancellationResult]:
-    #     self.logger().debug("cancel_all_orders: start")
-    #
-    #     self._check_markets_initialized() or await self._update_markets()
-    #
-    #     async with self._locks.cancel_all_orders:
-    #         try:
-    #             request = {
-    #                 "trading_pair": self._trading_pair,
-    #                 "chain": self._chain,
-    #                 "network": self._network,
-    #                 "connector": self._connector,
-    #                 "address": self._owner_address,
-    #                 "exchange_order_id": None,
-    #             }
-    #
-    #             await self._gateway.clob_cancel_order(**request)
-    #
-    #         except Exception as exception:
-    #             self.logger().debug(
-    #                 """Cancellation of all orders failed."""
-    #             )
-    #
-    #             raise exception
-    #
-    #     self.logger().debug("cancel_all_orders: end")
-    #
-    #     return []
 
     async def get_last_traded_price(self, trading_pair: str) -> Decimal:
         self.logger().debug("get_last_traded_price: start")
@@ -801,10 +767,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             await asyncio.sleep(MARKETS_UPDATE_INTERVAL)
 
             self.logger().debug("_update_markets_loop: end loop")
-
-    # async def cancel_all(self, _timeout_seconds: float) -> List[
-    # ]:
-    #     return await self.cancel_all_orders()
 
     async def _check_if_order_failed_based_on_transaction(
         self,
