@@ -540,7 +540,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                         "cancelation_transaction_hash": in_flight_order.cancel_tx_hash,
                     },
                 )
-                self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=open_update)
 
                 self.logger().debug("get_order_status_update: end")
 
