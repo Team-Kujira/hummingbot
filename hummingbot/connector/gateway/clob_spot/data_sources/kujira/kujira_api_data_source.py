@@ -20,7 +20,7 @@ from hummingbot.core.data_type.trade_fee import MakerTakerExchangeFeeRates, Toke
 from hummingbot.core.event.events import AccountEvent, MarketEvent, OrderBookDataSourceEvent
 from hummingbot.core.gateway.gateway_http_client import GatewayHttpClient
 from hummingbot.core.network_iterator import NetworkStatus
-from hummingbot.core.utils.async_utils import safe_gather
+from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
 
 from .kujira_constants import CONNECTOR, KUJIRA_NATIVE_TOKEN, MARKETS_UPDATE_INTERVAL
 from .kujira_helpers import convert_market_name_to_hb_trading_pair, generate_hash
@@ -98,22 +98,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self.logger().setLevel("DEBUG")
         self.logger().debug("start: start")
 
-        await super().start()
+        await self._update_markets()
 
-        # await self._update_markets()
-
-        # self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
-        #     coro=self._update_markets_loop()
-        # )
+        self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
+            coro=self._update_markets_loop()
+        )
         self.logger().debug("start: end")
 
     async def stop(self):
         self.logger().debug("stop: start")
 
-        await super().stop()
-
-        # self._tasks.update_markets and self._tasks.update_markets.cancel()
-        # self._tasks.update_markets = None
+        self._tasks.update_markets and self._tasks.update_markets.cancel()
+        self._tasks.update_markets = None
 
         self.logger().debug("stop: end")
 
