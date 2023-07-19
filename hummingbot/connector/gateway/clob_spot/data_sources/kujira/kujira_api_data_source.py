@@ -700,18 +700,22 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_clob_markets response:\n "{self._dump(response)}".""")
 
-        self._markets = DotMap(response, _dynamic=False).markets
+        if 'trading_pair' in request or self._trading_pair:
+            markets = DotMap(response, _dynamic=False).markets
+            self._markets = markets[request['trading_pair']]
+            self._market = self._markets
+            self._markets_info.clear()
+            self._market["hb_trading_pair"] = convert_market_name_to_hb_trading_pair(self._market.name)
+            self._markets_info[self._market["hb_trading_pair"]] = self._market
+        else:
+            self._markets = DotMap(response, _dynamic=False).markets
 
-        if self._trading_pair:
-            self._market = self._markets[self._trading_pair]
+            self._markets_info.clear()
+            for market in self._markets.values():
+                market["hb_trading_pair"] = convert_market_name_to_hb_trading_pair(market.name)
+                self._markets_info[market["hb_trading_pair"]] = market
 
         self.logger().debug("_update_markets: end")
-
-        self._markets_info.clear()  # TODO - Verify
-        for market in self._markets.values():
-            market["hb_trading_pair"] = convert_market_name_to_hb_trading_pair(market.name)
-
-            self._markets_info[market["hb_trading_pair"]] = market
 
         return self._markets
 
