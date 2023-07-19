@@ -258,7 +258,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         ) and (
                 active_order.current_state != OrderState.FILLED
         ) and (
-                active_order.current_state != OrderState.PENDING_CREATE
+                active_order.exchange_order_id
         ):
             self.logger().debug("cancel_order: start")
 
@@ -288,14 +288,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     transaction_hash = response["txHash"]
 
                     if transaction_hash in (None, ""):
-                        raise Exception(
-                            f"""Cancellation of order "{order.client_order_id}" / "{order.exchange_order_id}" failed. Invalid transaction hash: "{transaction_hash}"."""
-                        )
+                        if active_order.current_state == OrderState.PARTIALLY_FILLED or active_order.current_state == OrderState.PENDING_CREATE:
+                            return True, DotMap({}, _dynamic=False)
+                        return False, DotMap({}, _dynamic=False)
+                        # raise Exception(
+                        #     f"""Cancellation of order "{order.client_order_id}" / "{order.exchange_order_id}" failed. Invalid transaction hash: "{transaction_hash}"."""
+                        # )
 
                     self.logger().debug(
                         f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" successfully cancelled. Transaction hash: "{transaction_hash}"."""
                     )
                 except Exception as exception:
+                    # await self.gateway_order_tracker.process_order_not_found(order.client_order_id)
                     if 'No orders with the specified information exist' in str(exception.args):
                         self.logger().debug(
                             f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" already cancelled."""
@@ -314,8 +318,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             }, _dynamic=False)
 
             self.logger().debug("cancel_order: end")
-
-            order.current_state = OrderState.CANCELED
 
             order.cancel_tx_hash = transaction_hash
 
