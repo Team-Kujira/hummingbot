@@ -854,7 +854,7 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                                 OrderState.PENDING_CANCEL,
                             }:
 
-                                self._publisher.trigger_event(event_tag=OrderUpdate, message=message)
+                                self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=message)
 
                             elif updated_order["state"] == OrderState.FILLED.name:
 
