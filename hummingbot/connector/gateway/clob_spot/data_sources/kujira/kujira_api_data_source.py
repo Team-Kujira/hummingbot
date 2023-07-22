@@ -1,4 +1,5 @@
 import asyncio
+from asyncio import Task
 from enum import Enum
 from time import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -17,7 +18,13 @@ from hummingbot.core.data_type.common import OrderType
 from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate, TradeUpdate
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
 from hummingbot.core.data_type.trade_fee import MakerTakerExchangeFeeRates, TokenAmount, TradeFeeBase, TradeFeeSchema
-from hummingbot.core.event.events import AccountEvent, MarketEvent, OrderBookDataSourceEvent
+from hummingbot.core.event.events import (
+    AccountEvent,
+    MarketEvent,
+    OrderBookDataSourceEvent,
+    OrderCancelledEvent,
+    OrderFilledEvent,
+)
 from hummingbot.core.gateway.gateway_http_client import GatewayHttpClient
 from hummingbot.core.network_iterator import NetworkStatus
 from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
@@ -72,6 +79,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         self._gateway = GatewayHttpClient.get_instance(self._client_config)
 
+        self._all_active_orders = None
+
     @property
     def real_time_balance_update(self) -> bool:
         return False
@@ -103,6 +112,9 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
             coro=self._update_markets_loop()
         )
+
+        self._update_all_active_orders()
+
         self.logger().debug("start: end")
 
     async def stop(self):
@@ -165,6 +177,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         }, _dynamic=False)
 
         self.logger().debug("place_order: end")
+
+        self._update_all_active_orders()
 
         return order.exchange_order_id, misc_updates
 
@@ -320,6 +334,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             self.logger().debug("cancel_order: end")
 
             order.cancel_tx_hash = transaction_hash
+
+            self._update_all_active_orders()
 
             return True, misc_updates
         return False, DotMap({}, _dynamic=False)
@@ -789,3 +805,95 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
             return jsonpickle.encode(target, unpicklable=True, indent=2)
         except (Exception,):
             return target
+
+    @staticmethod
+    def _create_task(target: Any) -> Task:
+        return asyncio.ensure_future(target)
+
+    @staticmethod
+    def _create_event_loop():
+        return asyncio.get_event_loop()
+
+    def _create_and_run_task(self, target: Any):
+        event_loop = self._create_event_loop()
+        task = self._create_task(target)
+        if not event_loop.is_running():
+            event_loop.run_until_complete(task)
+
+    async def _update_order_status(self):
+        if self._all_active_orders:
+            while True:
+                for order in self._all_active_orders.values():
+                    request = {
+                        "trading_pair": self._trading_pair,
+                        "chain": self._chain,
+                        "network": self._network,
+                        "connector": self._connector,
+                        "address": self._owner_address,
+                        "exchange_order_id": order.exchange_order_id,
+                    }
+
+                    response = await self._gateway.get_clob_order_status_updates(**request)
+
+                    try:
+                        updated_order = response["orders"][0]
+
+                        if updated_order["state"] != order.current_state:
+
+                            message = {
+                                "trading_pair": self._trading_pair,
+                                "update_timestamp":
+                                    updated_order["updatedAt"] if len(updated_order["updatedAt"]) else time(),
+                                "new_state": updated_order["state"],
+                            }
+
+                            if updated_order["state"] in {
+                                OrderState.PENDING_CREATE,
+                                OrderState.OPEN,
+                                OrderState.PARTIALLY_FILLED,
+                                OrderState.PENDING_CANCEL,
+                            }:
+
+                                self._publisher.trigger_event(event_tag=OrderUpdate, message=message)
+
+                            elif updated_order["state"] == OrderState.FILLED.name:
+
+                                message = {
+                                    "timestamp":
+                                        updated_order["updatedAt"] if len(updated_order["updatedAt"]) else time(),
+                                    "order_id": order.client_order_id,
+                                    "trading_pair": self._trading_pair,
+                                    "trade_type": order.trade_type,
+                                    "order_type": order.order_type,
+                                    "price": order.price,
+                                    "amount": order.amount,
+                                    "trade_fee": '',
+                                    "exchange_trade_id": "",
+                                    "exchange_order_id": order.exchange_order_id,
+                                }
+
+                                self._publisher.trigger_event(event_tag=OrderFilledEvent, message=message)
+
+                            elif updated_order["state"] == OrderState.CANCELED.name:
+
+                                message = {
+                                    "timestamp":
+                                        updated_order["updatedAt"] if len(updated_order["updatedAt"]) else time(),
+                                    "order_id": order.client_order_id,
+                                    "exchange_order_id": order.exchange_order_id,
+                                }
+
+                                self._publisher.trigger_event(event_tag=OrderCancelledEvent, message=message)
+
+                    except Exception:
+                        raise self.logger().exception(Exception)
+
+                    await asyncio.sleep(10)
+
+    def _update_all_active_orders(self):
+        # while not self._all_active_orders:
+        self._all_active_orders = (
+            self._gateway_order_tracker.active_orders if self._gateway_order_tracker else None
+        )
+        if self._all_active_orders:
+            self._create_and_run_task(self._update_order_status())
