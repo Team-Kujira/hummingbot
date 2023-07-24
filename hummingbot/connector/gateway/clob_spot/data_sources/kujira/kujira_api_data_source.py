@@ -9,7 +9,6 @@ from _decimal import Decimal
 from dotmap import DotMap
 
 from hummingbot.client.config.config_helpers import ClientConfigAdapter
-from hummingbot.connector.gateway.clob_spot.data_sources.clob_api_data_source_base import CLOBAPIDataSourceBase
 from hummingbot.connector.gateway.common_types import CancelOrderResult, PlaceOrderResult
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.trading_rule import TradingRule
@@ -27,14 +26,15 @@ from hummingbot.core.event.events import (
 )
 from hummingbot.core.gateway.gateway_http_client import GatewayHttpClient
 from hummingbot.core.network_iterator import NetworkStatus
-from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
+from hummingbot.core.utils.async_utils import safe_gather
 
+from ..gateway_clob_api_data_source_base import GatewayCLOBAPIDataSourceBase
 from .kujira_constants import CONNECTOR, KUJIRA_NATIVE_TOKEN, MARKETS_UPDATE_INTERVAL
 from .kujira_helpers import convert_market_name_to_hb_trading_pair, generate_hash
 from .kujira_types import OrderStatus as KujiraOrderStatus
 
 
-class KujiraAPIDataSource(CLOBAPIDataSourceBase):
+class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
     def __init__(
         self,
@@ -64,7 +64,6 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._user_balances = None
 
         self._tasks = DotMap({
-            "update_markets": None,
         }, _dynamic=False)
 
         self._locks = DotMap({
@@ -80,6 +79,13 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self._gateway = GatewayHttpClient.get_instance(self._client_config)
 
         self._all_active_orders = None
+
+        self._snapshots_min_update_interval = 30
+        self._snapshots_max_update_interval = 60
+
+    @property
+    def connector_name(self) -> str:
+        return CONNECTOR
 
     @property
     def real_time_balance_update(self) -> bool:
@@ -107,21 +113,16 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
         self.logger().setLevel("DEBUG")
         self.logger().debug("start: start")
 
-        await self._update_markets()
-
-        self._tasks.update_markets = self._tasks.update_markets or safe_ensure_future(
-            coro=self._update_markets_loop()
-        )
-
         self._update_all_active_orders()
+
+        await super().start()
 
         self.logger().debug("start: end")
 
     async def stop(self):
         self.logger().debug("stop: start")
 
-        self._tasks.update_markets and self._tasks.update_markets.cancel()
-        self._tasks.update_markets = None
+        await super().stop()
 
         self.logger().debug("stop: end")
 
@@ -645,6 +646,18 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
 
         return []
 
+    def _get_trading_pair_from_market_info(self, market_info: Dict[str, Any]) -> str:
+        return market_info["hb_trading_pair"]
+
+    def _get_exchange_base_quote_tokens_from_market_info(self, market_info: Dict[str, Any]) -> Tuple[str, str]:
+        base = market_info["baseToken"]["symbol"]
+        quote = market_info["quoteToken"]["symbol"]
+
+        return base, quote
+
+    def _get_last_trade_price_from_ticker_data(self, ticker_data: List[Dict[str, Any]]) -> Decimal:
+        raise NotImplementedError
+
     def is_order_not_found_during_status_update_error(self, status_update_exception: Exception) -> bool:
         self.logger().debug("is_order_not_found_during_status_update_error: start")
 
@@ -836,9 +849,8 @@ class KujiraAPIDataSource(CLOBAPIDataSourceBase):
                     response = await self._gateway.get_clob_order_status_updates(**request)
 
                     try:
-                        updated_order = response["orders"][0]
-
-                        if updated_order["state"] != order.current_state:
+                        if response["orders"] is not None and response["orders"][0] is not None and response["orders"][0]["state"] != order.current_state:
+                            updated_order = response["orders"][0]
 
                             message = {
                                 "trading_pair": self._trading_pair,
