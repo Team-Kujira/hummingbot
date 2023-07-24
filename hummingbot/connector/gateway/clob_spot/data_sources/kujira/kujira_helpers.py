@@ -1,4 +1,6 @@
+import asyncio
 import hashlib
+import traceback
 from datetime import datetime
 from typing import Any, List
 
@@ -31,3 +33,21 @@ def convert_hb_trading_pair_to_market_name(trading_pair: str) -> str:
 
 def convert_market_name_to_hb_trading_pair(market_name: str) -> str:
     return market_name.replace("/", "-")
+
+
+def retry_decorator(retries=1, delay=0, timeout=None):
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            errors = []
+            for i in range(retries):
+                try:
+                    result = await asyncio.wait_for(func(*args, **kwargs), timeout=timeout)
+                    return result
+                except Exception as e:
+                    tb_str = traceback.format_exception(type(e), value=e, tb=e.__traceback__)
+                    errors.append(''.join(tb_str))
+                    await asyncio.sleep(delay)
+            error_message = f"Function failed after {retries} attempts. Here are the errors:\n" + "\n".join(errors)
+            raise Exception(error_message)
+        return wrapper
+    return decorator

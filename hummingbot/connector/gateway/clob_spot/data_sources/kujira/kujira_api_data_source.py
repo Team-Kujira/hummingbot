@@ -30,7 +30,7 @@ from hummingbot.core.utils.async_utils import safe_gather
 
 from ..gateway_clob_api_data_source_base import GatewayCLOBAPIDataSourceBase
 from .kujira_constants import CONNECTOR, KUJIRA_NATIVE_TOKEN, MARKETS_UPDATE_INTERVAL
-from .kujira_helpers import convert_market_name_to_hb_trading_pair, generate_hash
+from .kujira_helpers import convert_market_name_to_hb_trading_pair, generate_hash, retry_decorator
 from .kujira_types import OrderStatus as KujiraOrderStatus
 
 
@@ -109,6 +109,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
     def get_supported_order_types(self) -> List[OrderType]:
         return [OrderType.LIMIT]
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def start(self):
         self.logger().setLevel("DEBUG")
         self.logger().debug("start: start")
@@ -119,6 +120,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self.logger().debug("start: end")
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def stop(self):
         self.logger().debug("stop: start")
 
@@ -126,6 +128,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self.logger().debug("stop: end")
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def place_order(self, order: GatewayInFlightOrder, **kwargs) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         self.logger().debug("place_order: start")
 
@@ -183,6 +186,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return order.exchange_order_id, misc_updates
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def batch_order_create(self, orders_to_create: List[GatewayInFlightOrder]) -> List[PlaceOrderResult]:
         self.logger().debug("batch_order_create: start")
 
@@ -257,6 +261,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return place_order_results
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def cancel_order(self, order: GatewayInFlightOrder) -> Tuple[bool, Optional[Dict[str, Any]]]:
         active_order = self._gateway_order_tracker.active_orders.get(order.client_order_id)
 
@@ -341,6 +346,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
             return True, misc_updates
         return False, DotMap({}, _dynamic=False)
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def batch_order_cancel(self, orders_to_cancel: List[GatewayInFlightOrder]) -> List[CancelOrderResult]:
         self.logger().debug("batch_order_cancel: start")
 
@@ -414,6 +420,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return cancel_order_results
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def get_last_traded_price(self, trading_pair: str) -> Decimal:
         self.logger().debug("get_last_traded_price: start")
 
@@ -438,6 +445,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return ticker_price
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def get_order_book_snapshot(self, trading_pair: str) -> OrderBookMessage:
         self.logger().debug("get_order_book_snapshot: start")
 
@@ -484,6 +492,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return snapshot
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def get_account_balances(self) -> Dict[str, Dict[str, Decimal]]:
         self.logger().debug("get_account_balances: start")
 
@@ -499,7 +508,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         else:
             request["token_symbols"] = []
 
-        self.logger().debug(f"""get_balances request:\n "{self._dump(request)}".""")
+        # self.logger().debug(f"""get_balances request:\n "{self._dump(request)}".""")
 
         response = await self._gateway.get_balances(**request)
 
@@ -517,6 +526,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return hb_balances
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def get_order_status_update(self, in_flight_order: GatewayInFlightOrder) -> OrderUpdate:
 
         active_order = self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id)
@@ -579,6 +589,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         self.logger().debug("get_order_status_update: end")
         return no_update
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def get_all_order_fills(self, in_flight_order: GatewayInFlightOrder) -> List[TradeUpdate]:
         if in_flight_order.exchange_order_id:
 
@@ -676,6 +687,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return output
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def check_network_status(self) -> NetworkStatus:
         # self.logger().debug("check_network_status: start")
 
@@ -713,6 +725,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return output
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def _update_markets(self):
         self.logger().debug("_update_markets: start")
 
@@ -792,6 +805,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return output
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def _update_markets_loop(self):
         self.logger().debug("_update_markets_loop: start")
 
@@ -833,6 +847,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         if not event_loop.is_running():
             event_loop.run_until_complete(task)
 
+    @retry_decorator(retries=3, delay=3, timeout=60)
     async def _update_order_status(self):
         if self._all_active_orders:
             while True:
