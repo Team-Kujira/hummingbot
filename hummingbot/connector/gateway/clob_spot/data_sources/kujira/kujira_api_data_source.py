@@ -158,7 +158,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""clob_place_order request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway_clob_place_order(**request)
+                response = await self._gateway_clob_place_order(request)
 
                 self.logger().debug(f"""clob_place_order response:\n "{self._dump(response)}".""")
 
@@ -227,7 +227,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""clob_batch_order_modify request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway_clob_batch_order_modify(**request)
+                response = await self._gateway_clob_batch_order_modify(request)
 
                 self.logger().debug(f"""clob_batch_order_modify response:\n "{self._dump(response)}".""")
 
@@ -306,7 +306,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                     self.logger().debug(f"""clob_cancel_order request:\n "{self._dump(request)}".""")
 
-                    response = await self._gateway_clob_cancel_order(**request)
+                    response = await self._gateway_clob_cancel_order(request)
 
                     self.logger().debug(f"""clob_cancel_order response:\n "{self._dump(response)}".""")
 
@@ -388,7 +388,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""clob_batch_order_moodify request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway_clob_batch_order_modify(**request)
+                response = await self._gateway_clob_batch_order_modify(request)
 
                 self.logger().debug(f"""clob_batch_order_modify response:\n "{self._dump(response)}".""")
 
@@ -436,7 +436,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_clob_ticker request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway_get_clob_ticker(**request)
+        response = await self._gateway_get_clob_ticker(request)
 
         self.logger().debug(f"""get_clob_ticker response:\n "{self._dump(response)}".""")
 
@@ -460,7 +460,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_clob_orderbook_snapshot request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway_get_clob_orderbook_snapshot(**request)
+        response = await self._gateway_get_clob_orderbook_snapshot(request)
 
         self.logger().debug(f"""get_clob_orderbook_snapshot response:\n "{self._dump(response)}".""")
 
@@ -511,7 +511,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         # self.logger().debug(f"""get_balances request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway_get_balances(**request)
+        response = await self._gateway_get_balances(request)
 
         self.logger().debug(f"""get_balances response:\n "{self._dump(response)}".""")
 
@@ -547,7 +547,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""get_clob_order_status_updates request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway_get_clob_order_status_updates(**request)
+                response = await self._gateway_get_clob_order_status_updates(request)
 
                 self.logger().debug(f"""get_clob_order_status_updates response:\n "{self._dump(response)}".""")
 
@@ -610,7 +610,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                     self.logger().debug(f"""get_clob_order_status_updates request:\n "{self._dump(request)}".""")
 
-                    response = await self._gateway_get_clob_order_status_updates(**request)
+                    response = await self._gateway_get_clob_order_status_updates(request)
 
                     self.logger().debug(f"""get_clob_order_status_updates response:\n "{self._dump(response)}".""")
 
@@ -736,7 +736,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_clob_markets request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway_get_clob_markets(**request)
+        response = await self._gateway_get_clob_markets(request)
 
         self.logger().debug(f"""get_clob_markets response:\n "{self._dump(response)}".""")
 
@@ -856,7 +856,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                             "exchange_order_id": order.exchange_order_id,
                         }
 
-                        response = await self._gateway_get_clob_order_status_updates(**request)
+                        response = await self._gateway_get_clob_order_status_updates(request)
 
                         try:
                             if response["orders"] is not None and len(response['orders']) and response["orders"][0] is not None and response["orders"][0]["state"] != order.current_state:
