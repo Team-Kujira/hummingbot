@@ -74,6 +74,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
             "settle_market_funds": asyncio.Lock(),
             "settle_markets_funds": asyncio.Lock(),
             "settle_all_markets_funds": asyncio.Lock(),
+            "all_active_orders": asyncio.Lock(),
         }, _dynamic=False)
 
         self._gateway = GatewayHttpClient.get_instance(self._client_config)
@@ -851,76 +852,78 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
     async def _update_order_status(self):
         if self._all_active_orders:
             while True:
-                for order in self._all_active_orders.values():
-                    request = {
-                        "trading_pair": self._trading_pair,
-                        "chain": self._chain,
-                        "network": self._network,
-                        "connector": self._connector,
-                        "address": self._owner_address,
-                        "exchange_order_id": order.exchange_order_id,
-                    }
+                async with self._locks.all_active_orders:
+                    for order in self._all_active_orders.values():
+                        request = {
+                            "trading_pair": self._trading_pair,
+                            "chain": self._chain,
+                            "network": self._network,
+                            "connector": self._connector,
+                            "address": self._owner_address,
+                            "exchange_order_id": order.exchange_order_id,
+                        }
 
-                    response = await self._gateway.get_clob_order_status_updates(**request)
+                        response = await self._gateway.get_clob_order_status_updates(**request)
 
-                    try:
-                        if response["orders"] is not None and len(response['orders']) and response["orders"][0] is not None and response["orders"][0]["state"] != order.current_state:
-                            updated_order = response["orders"][0]
-
-                            message = {
-                                "trading_pair": self._trading_pair,
-                                "update_timestamp":
-                                    updated_order["updatedAt"] if len(updated_order["updatedAt"]) else time(),
-                                "new_state": updated_order["state"],
-                            }
-
-                            if updated_order["state"] in {
-                                OrderState.PENDING_CREATE,
-                                OrderState.OPEN,
-                                OrderState.PARTIALLY_FILLED,
-                                OrderState.PENDING_CANCEL,
-                            }:
-
-                                self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=message)
-
-                            elif updated_order["state"] == OrderState.FILLED.name:
+                        try:
+                            if response["orders"] is not None and len(response['orders']) and response["orders"][0] is not None and response["orders"][0]["state"] != order.current_state:
+                                updated_order = response["orders"][0]
 
                                 message = {
-                                    "timestamp":
-                                        updated_order["updatedAt"] if len(updated_order["updatedAt"]) else time(),
-                                    "order_id": order.client_order_id,
                                     "trading_pair": self._trading_pair,
-                                    "trade_type": order.trade_type,
-                                    "order_type": order.order_type,
-                                    "price": order.price,
-                                    "amount": order.amount,
-                                    "trade_fee": '',
-                                    "exchange_trade_id": "",
-                                    "exchange_order_id": order.exchange_order_id,
-                                }
-
-                                self._publisher.trigger_event(event_tag=OrderFilledEvent, message=message)
-
-                            elif updated_order["state"] == OrderState.CANCELED.name:
-
-                                message = {
-                                    "timestamp":
+                                    "update_timestamp":
                                         updated_order["updatedAt"] if len(updated_order["updatedAt"]) else time(),
-                                    "order_id": order.client_order_id,
-                                    "exchange_order_id": order.exchange_order_id,
+                                    "new_state": updated_order["state"],
                                 }
 
-                                self._publisher.trigger_event(event_tag=OrderCancelledEvent, message=message)
+                                if updated_order["state"] in {
+                                    OrderState.PENDING_CREATE,
+                                    OrderState.OPEN,
+                                    OrderState.PARTIALLY_FILLED,
+                                    OrderState.PENDING_CANCEL,
+                                }:
 
-                    except Exception:
-                        raise self.logger().exception(Exception)
+                                    self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=message)
 
-                    await asyncio.sleep(10)
+                                elif updated_order["state"] == OrderState.FILLED.name:
 
-    def _update_all_active_orders(self):
-        # while not self._all_active_orders:
-        self._all_active_orders = (
-            self._gateway_order_tracker.active_orders if self._gateway_order_tracker else None
-        )
-        if self._all_active_orders:
-            self._create_and_run_task(self._update_order_status())
+                                    message = {
+                                        "timestamp":
+                                            updated_order["updatedAt"] if len(updated_order["updatedAt"]) else time(),
+                                        "order_id": order.client_order_id,
+                                        "trading_pair": self._trading_pair,
+                                        "trade_type": order.trade_type,
+                                        "order_type": order.order_type,
+                                        "price": order.price,
+                                        "amount": order.amount,
+                                        "trade_fee": '',
+                                        "exchange_trade_id": "",
+                                        "exchange_order_id": order.exchange_order_id,
+                                    }
+
+                                    self._publisher.trigger_event(event_tag=OrderFilledEvent, message=message)
+
+                                elif updated_order["state"] == OrderState.CANCELED.name:
+
+                                    message = {
+                                        "timestamp":
+                                            updated_order["updatedAt"] if len(updated_order["updatedAt"]) else time(),
+                                        "order_id": order.client_order_id,
+                                        "exchange_order_id": order.exchange_order_id,
+                                    }
+
+                                    self._publisher.trigger_event(event_tag=OrderCancelledEvent, message=message)
+
+                        except Exception:
+                            raise self.logger().exception(Exception)
+
+                        await asyncio.sleep(10)
+
+    async def _update_all_active_orders(self):
+        while not self._all_active_orders:
+            with self._locks.all_active_orders:
+                self._all_active_orders = (
+                    self._gateway_order_tracker.active_orders if self._gateway_order_tracker else None
+                )
+                if self._all_active_orders:
+                    self._create_and_run_task(self._update_order_status())
