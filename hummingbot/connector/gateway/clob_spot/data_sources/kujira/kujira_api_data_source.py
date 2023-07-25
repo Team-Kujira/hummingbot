@@ -313,8 +313,8 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                     transaction_hash = response["txHash"]
 
                     if transaction_hash in (None, ""):
-                        if active_order.current_state == OrderState.PARTIALLY_FILLED or active_order.current_state == OrderState.PENDING_CREATE:
-                            return True, DotMap({}, _dynamic=False)
+                        # if active_order.current_state == OrderState.PARTIALLY_FILLED or active_order.current_state == OrderState.PENDING_CREATE:
+                        #     return True, DotMap({}, _dynamic=False)
                         return False, DotMap({}, _dynamic=False)
                         # raise Exception(
                         #     f"""Cancellation of order "{order.client_order_id}" / "{order.exchange_order_id}" failed. Invalid transaction hash: "{transaction_hash}"."""
@@ -914,7 +914,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
     async def _update_all_active_orders(self):
         while not self._all_active_orders:
-            with self._locks.all_active_orders:
+            async with self._locks.all_active_orders:
                 self._all_active_orders = (
                     self._gateway_order_tracker.active_orders if self._gateway_order_tracker else None
                 )
