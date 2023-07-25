@@ -17,13 +17,7 @@ from hummingbot.core.data_type.common import OrderType
 from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate, TradeUpdate
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
 from hummingbot.core.data_type.trade_fee import MakerTakerExchangeFeeRates, TokenAmount, TradeFeeBase, TradeFeeSchema
-from hummingbot.core.event.events import (
-    AccountEvent,
-    MarketEvent,
-    OrderBookDataSourceEvent,
-    OrderCancelledEvent,
-    OrderFilledEvent,
-)
+from hummingbot.core.event.events import AccountEvent, MarketEvent, OrderBookDataSourceEvent, OrderCancelledEvent
 from hummingbot.core.gateway.gateway_http_client import GatewayHttpClient
 from hummingbot.core.network_iterator import NetworkStatus
 from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
@@ -110,6 +104,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         return [
             MarketEvent.TradeUpdate,
             MarketEvent.OrderUpdate,
+            MarketEvent.OrderFilled,
             AccountEvent.BalanceEvent,
             OrderBookDataSourceEvent.TRADE_EVENT,
             OrderBookDataSourceEvent.DIFF_EVENT,
@@ -904,7 +899,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                                 "exchange_order_id": order.exchange_order_id,
                             }
 
-                            self._publisher.trigger_event(event_tag=OrderFilledEvent, message=message)
+                            self._publisher.trigger_event(event_tag=MarketEvent.OrderFilled, message=message)
 
                         elif updated_order["state"] == OrderState.CANCELED.name:
 
