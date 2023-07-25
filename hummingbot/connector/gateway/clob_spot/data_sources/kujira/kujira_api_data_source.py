@@ -864,7 +864,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                     response = await self._gateway.get_clob_order_status_updates(**request)
 
                     try:
-                        if response["orders"] is not None and response["orders"][0] is not None and response["orders"][0]["state"] != order.current_state:
+                        if response["orders"] is not None and len(response['orders']) and response["orders"][0] is not None and response["orders"][0]["state"] != order.current_state:
                             updated_order = response["orders"][0]
 
                             message = {
