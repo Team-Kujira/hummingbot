@@ -35,7 +35,7 @@ def convert_market_name_to_hb_trading_pair(market_name: str) -> str:
     return market_name.replace("/", "-")
 
 
-def retry_decorator(retries=1, delay=0, timeout=None):
+def automatic_retry_with_timeout(retries=1, delay=0, timeout=None):
     def decorator(func):
         async def wrapper(*args, **kwargs):
             errors = []

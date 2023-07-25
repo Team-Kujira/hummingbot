@@ -29,8 +29,15 @@ from hummingbot.core.network_iterator import NetworkStatus
 from hummingbot.core.utils.async_utils import safe_gather
 
 from ..gateway_clob_api_data_source_base import GatewayCLOBAPIDataSourceBase
-from .kujira_constants import CONNECTOR, KUJIRA_NATIVE_TOKEN, MARKETS_UPDATE_INTERVAL
-from .kujira_helpers import convert_market_name_to_hb_trading_pair, generate_hash, retry_decorator
+from .kujira_constants import (
+    CONNECTOR,
+    DELAY_BETWEEN_RETRIES,
+    KUJIRA_NATIVE_TOKEN,
+    MARKETS_UPDATE_INTERVAL,
+    NUMBER_OF_RETRIES,
+    TIMEOUT,
+)
+from .kujira_helpers import automatic_retry_with_timeout, convert_market_name_to_hb_trading_pair, generate_hash
 from .kujira_types import OrderStatus as KujiraOrderStatus
 
 
@@ -110,18 +117,18 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
     def get_supported_order_types(self) -> List[OrderType]:
         return [OrderType.LIMIT]
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
+    @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
     async def start(self):
         self.logger().setLevel("DEBUG")
         self.logger().debug("start: start")
 
-        self._update_all_active_orders()
+        await self._update_all_active_orders()
 
         await super().start()
 
         self.logger().debug("start: end")
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
+    @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
     async def stop(self):
         self.logger().debug("stop: start")
 
@@ -129,7 +136,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self.logger().debug("stop: end")
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def place_order(self, order: GatewayInFlightOrder, **kwargs) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
         self.logger().debug("place_order: start")
 
@@ -152,7 +158,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""clob_place_order request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.clob_place_order(**request)
+                response = await self._gateway_clob_place_order(**request)
 
                 self.logger().debug(f"""clob_place_order response:\n "{self._dump(response)}".""")
 
@@ -183,11 +189,10 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self.logger().debug("place_order: end")
 
-        self._update_all_active_orders()
+        await self._update_all_active_orders()
 
         return order.exchange_order_id, misc_updates
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def batch_order_create(self, orders_to_create: List[GatewayInFlightOrder]) -> List[PlaceOrderResult]:
         self.logger().debug("batch_order_create: start")
 
@@ -222,7 +227,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""clob_batch_order_modify request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.clob_batch_order_modify(**request)
+                response = await self._gateway_clob_batch_order_modify(**request)
 
                 self.logger().debug(f"""clob_batch_order_modify response:\n "{self._dump(response)}".""")
 
@@ -262,7 +267,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return place_order_results
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def cancel_order(self, order: GatewayInFlightOrder) -> Tuple[bool, Optional[Dict[str, Any]]]:
         active_order = self._gateway_order_tracker.active_orders.get(order.client_order_id)
 
@@ -302,7 +306,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                     self.logger().debug(f"""clob_cancel_order request:\n "{self._dump(request)}".""")
 
-                    response = await self._gateway.clob_cancel_order(**request)
+                    response = await self._gateway_clob_cancel_order(**request)
 
                     self.logger().debug(f"""clob_cancel_order response:\n "{self._dump(response)}".""")
 
@@ -342,12 +346,11 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
             order.cancel_tx_hash = transaction_hash
 
-            self._update_all_active_orders()
+            await self._update_all_active_orders()
 
             return True, misc_updates
         return False, DotMap({}, _dynamic=False)
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def batch_order_cancel(self, orders_to_cancel: List[GatewayInFlightOrder]) -> List[CancelOrderResult]:
         self.logger().debug("batch_order_cancel: start")
 
@@ -385,7 +388,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""clob_batch_order_moodify request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.clob_batch_order_modify(**request)
+                response = await self._gateway_clob_batch_order_modify(**request)
 
                 self.logger().debug(f"""clob_batch_order_modify response:\n "{self._dump(response)}".""")
 
@@ -421,7 +424,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return cancel_order_results
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def get_last_traded_price(self, trading_pair: str) -> Decimal:
         self.logger().debug("get_last_traded_price: start")
 
@@ -434,7 +436,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_clob_ticker request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway.get_clob_ticker(**request)
+        response = await self._gateway_get_clob_ticker(**request)
 
         self.logger().debug(f"""get_clob_ticker response:\n "{self._dump(response)}".""")
 
@@ -446,7 +448,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return ticker_price
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def get_order_book_snapshot(self, trading_pair: str) -> OrderBookMessage:
         self.logger().debug("get_order_book_snapshot: start")
 
@@ -459,7 +460,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_clob_orderbook_snapshot request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway.get_clob_orderbook_snapshot(**request)
+        response = await self._gateway_get_clob_orderbook_snapshot(**request)
 
         self.logger().debug(f"""get_clob_orderbook_snapshot response:\n "{self._dump(response)}".""")
 
@@ -493,7 +494,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return snapshot
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def get_account_balances(self) -> Dict[str, Dict[str, Decimal]]:
         self.logger().debug("get_account_balances: start")
 
@@ -511,7 +511,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         # self.logger().debug(f"""get_balances request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway.get_balances(**request)
+        response = await self._gateway_get_balances(**request)
 
         self.logger().debug(f"""get_balances response:\n "{self._dump(response)}".""")
 
@@ -527,9 +527,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return hb_balances
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def get_order_status_update(self, in_flight_order: GatewayInFlightOrder) -> OrderUpdate:
-
         active_order = self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id)
 
         if active_order:
@@ -549,7 +547,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""get_clob_order_status_updates request:\n "{self._dump(request)}".""")
 
-                response = await self._gateway.get_clob_order_status_updates(**request)
+                response = await self._gateway_get_clob_order_status_updates(**request)
 
                 self.logger().debug(f"""get_clob_order_status_updates response:\n "{self._dump(response)}".""")
 
@@ -590,7 +588,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         self.logger().debug("get_order_status_update: end")
         return no_update
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def get_all_order_fills(self, in_flight_order: GatewayInFlightOrder) -> List[TradeUpdate]:
         if in_flight_order.exchange_order_id:
 
@@ -613,7 +610,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                     self.logger().debug(f"""get_clob_order_status_updates request:\n "{self._dump(request)}".""")
 
-                    response = await self._gateway.get_clob_order_status_updates(**request)
+                    response = await self._gateway_get_clob_order_status_updates(**request)
 
                     self.logger().debug(f"""get_clob_order_status_updates response:\n "{self._dump(response)}".""")
 
@@ -688,12 +685,11 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return output
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def check_network_status(self) -> NetworkStatus:
         # self.logger().debug("check_network_status: start")
 
         try:
-            await self._gateway.ping_gateway()
+            await self._gateway_ping_gateway()
 
             output = NetworkStatus.CONNECTED
         except asyncio.CancelledError:
@@ -726,7 +722,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return output
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def _update_markets(self):
         self.logger().debug("_update_markets: start")
 
@@ -741,7 +736,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_clob_markets request:\n "{self._dump(request)}".""")
 
-        response = await self._gateway.get_clob_markets(**request)
+        response = await self._gateway_get_clob_markets(**request)
 
         self.logger().debug(f"""get_clob_markets response:\n "{self._dump(response)}".""")
 
@@ -806,7 +801,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         return output
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def _update_markets_loop(self):
         self.logger().debug("_update_markets_loop: start")
 
@@ -848,7 +842,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         if not event_loop.is_running():
             event_loop.run_until_complete(task)
 
-    @retry_decorator(retries=3, delay=3, timeout=60)
     async def _update_order_status(self):
         if self._all_active_orders:
             while True:
@@ -863,7 +856,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                             "exchange_order_id": order.exchange_order_id,
                         }
 
-                        response = await self._gateway.get_clob_order_status_updates(**request)
+                        response = await self._gateway_get_clob_order_status_updates(**request)
 
                         try:
                             if response["orders"] is not None and len(response['orders']) and response["orders"][0] is not None and response["orders"][0]["state"] != order.current_state:
@@ -927,3 +920,39 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                 )
                 if self._all_active_orders:
                     self._create_and_run_task(self._update_order_status())
+
+    @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
+    async def _gateway_ping_gateway(self, request):
+        await self._gateway.ping_gateway()
+
+    @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
+    async def _gateway_get_clob_markets(self, request):
+        await self._gateway.get_clob_markets(**request)
+
+    @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
+    async def _gateway_get_clob_orderbook_snapshot(self, request):
+        return await self._gateway.get_clob_orderbook_snapshot(**request)
+
+    @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
+    async def _gateway_get_clob_ticker(self, request):
+        return await self._gateway.get_clob_ticker(**request)
+
+    @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
+    async def _gateway_get_balances(self, request):
+        return await self._gateway.get_balances(**request)
+
+    @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
+    async def _gateway_clob_place_order(self, request):
+        await self._gateway.clob_place_order(**request)
+
+    @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
+    async def _gateway_clob_cancel_order(self, request):
+        return await self._gateway.clob_cancel_order(**request)
+
+    @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
+    async def _gateway_clob_batch_order_modify(self, request):
+        return await self._gateway.clob_batch_order_modify(**request)
+
+    @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
+    async def _gateway_get_clob_order_status_updates(self, request):
+        await self._gateway.get_clob_order_status_updates(**request)
