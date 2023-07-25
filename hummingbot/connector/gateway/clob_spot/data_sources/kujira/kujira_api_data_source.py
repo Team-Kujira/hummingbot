@@ -119,12 +119,12 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
     @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
     async def start(self):
-        self.logger().setLevel("DEBUG")
+        self.logger().setLevel("ERROR")
         self.logger().debug("start: start")
 
-        await self._update_all_active_orders()
-
         await super().start()
+
+        await self._update_all_active_orders()
 
         self.logger().debug("start: end")
 
