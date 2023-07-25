@@ -161,7 +161,6 @@ class GatewayCLOBSPOT(ExchangePyBase):
         if not self.has_started:
             await self._api_data_source.start()
             await super().start_network()
-
             self.has_started = True
 
     async def stop_network(self):
