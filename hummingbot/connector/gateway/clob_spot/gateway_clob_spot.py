@@ -736,9 +736,4 @@ class GatewayCLOBSPOT(ExchangePyBase):
 
     @property
     def ready(self) -> bool:
-        status = super().ready
-
-        if not status and not self.has_started:
-            safe_ensure_future(self.start_network())
-
-        return status
+        return super().ready
