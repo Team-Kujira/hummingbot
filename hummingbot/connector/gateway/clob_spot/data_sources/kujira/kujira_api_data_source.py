@@ -1,4 +1,5 @@
 import asyncio
+import copy
 from asyncio import Task
 from enum import Enum
 from time import time
@@ -858,12 +859,14 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
             event_loop.run_until_complete(task)
 
     async def _update_order_status(self):
-        self._all_active_orders = (
-            self._gateway_order_tracker.active_orders if self._gateway_order_tracker else {}
-        )
+        async with self._locks["all_active_orders"]:
+            self._all_active_orders = (
+                self._gateway_order_tracker.active_orders if self._gateway_order_tracker else {}
+            )
 
-        async with self._locks.all_active_orders:
-            for order in self._all_active_orders.values():
+            orders = copy.deepcopy(self._all_active_orders.values())
+
+            for order in orders:
                 request = {
                     "trading_pair": self._trading_pair,
                     "chain": self._chain,
