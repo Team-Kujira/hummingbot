@@ -33,20 +33,13 @@ from .kujira_constants import (
     TIMEOUT,
     UPDATE_ORDER_STATUS_INTERVAL,
 )
-from .kujira_helpers import automatic_retry_with_timeout, convert_market_name_to_hb_trading_pair, generate_hash
+from .kujira_helpers import (
+    AsyncLock,
+    automatic_retry_with_timeout,
+    convert_market_name_to_hb_trading_pair,
+    generate_hash,
+)
 from .kujira_types import OrderStatus as KujiraOrderStatus
-
-
-class AsyncLock:
-    def __init__(self):
-        self._lock = asyncio.Lock()
-
-    async def __aenter__(self):
-        await self._lock.acquire()
-        return self
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        self._lock.release()
 
 
 class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):

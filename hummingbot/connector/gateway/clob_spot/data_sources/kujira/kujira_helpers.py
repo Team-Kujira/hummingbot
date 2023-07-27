@@ -51,3 +51,15 @@ def automatic_retry_with_timeout(retries=1, delay=0, timeout=None):
             raise Exception(error_message)
         return wrapper
     return decorator
+
+
+class AsyncLock:
+    def __init__(self):
+        self._lock = asyncio.Lock()
+
+    async def __aenter__(self):
+        await self._lock.acquire()
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        self._lock.release()
