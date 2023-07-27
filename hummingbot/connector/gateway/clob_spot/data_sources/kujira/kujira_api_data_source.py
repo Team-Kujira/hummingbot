@@ -871,12 +871,12 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
             event_loop.run_until_complete(task)
 
     async def _update_order_status(self):
-        async with self._locks["all_active_orders"]:
+        async with self._locks.all_active_orders:
             self._all_active_orders = (
                 self._gateway_order_tracker.active_orders if self._gateway_order_tracker else {}
             )
 
-            orders = copy.deepcopy(self._all_active_orders).values()
+            orders = copy.copy(self._all_active_orders).values()
 
             for order in orders:
                 request = {
