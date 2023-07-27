@@ -116,7 +116,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
     @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
     async def start(self):
-        self.logger().setLevel("ERROR")
+        self.logger().setLevel("INFO")
         self.logger().debug("start: start")
 
         await super().start()
@@ -171,11 +171,11 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 order.current_state = OrderState.CREATED
 
-                self.logger().debug(
+                self.logger().info(
                     f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" successfully placed. Transaction hash: "{transaction_hash}"."""
                 )
             except Exception as exception:
-                self.logger().debug(
+                self.logger().info(
                     f"""Placement of order "{order.client_order_id}" failed."""
                 )
 
@@ -236,11 +236,11 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 transaction_hash = response["txHash"]
 
-                self.logger().debug(
+                self.logger().info(
                     f"""Orders "{client_ids}" successfully placed. Transaction hash: {transaction_hash}."""
                 )
             except Exception as exception:
-                self.logger().debug(
+                self.logger().info(
                     f"""Placement of orders "{client_ids}" failed."""
                 )
 
@@ -323,19 +323,19 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                         #     f"""Cancellation of order "{order.client_order_id}" / "{order.exchange_order_id}" failed. Invalid transaction hash: "{transaction_hash}"."""
                         # )
 
-                    self.logger().debug(
+                    self.logger().info(
                         f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" successfully cancelled. Transaction hash: "{transaction_hash}"."""
                     )
                 except Exception as exception:
                     # await self.gateway_order_tracker.process_order_not_found(order.client_order_id)
                     if 'No orders with the specified information exist' in str(exception.args):
-                        self.logger().debug(
+                        self.logger().info(
                             f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" already cancelled."""
                         )
 
                         transaction_hash = "0000000000000000000000000000000000000000000000000000000000000000"  # noqa: mock
                     else:
-                        self.logger().debug(
+                        self.logger().info(
                             f"""Cancellation of order "{order.client_order_id}" / "{order.exchange_order_id}" failed."""
                         )
 
@@ -397,11 +397,11 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 transaction_hash = response["txHash"]
 
-                self.logger().debug(
+                self.logger().info(
                     f"""Orders "{client_ids}" / "{ids}" successfully cancelled. Transaction hash(es): "{transaction_hash}"."""
                 )
             except Exception as exception:
-                self.logger().debug(
+                self.logger().info(
                     f"""Cancellation of orders "{client_ids}" / "{ids}" failed."""
                 )
 
