@@ -315,13 +315,8 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                     transaction_hash = response["txHash"]
 
-                    if transaction_hash in (None, ""):
-                        # if active_order.current_state == OrderState.PARTIALLY_FILLED or active_order.current_state == OrderState.PENDING_CREATE:
-                        #     return True, DotMap({}, _dynamic=False)
+                    if transaction_hash in ("", None):
                         return False, DotMap({}, _dynamic=False)
-                        # raise Exception(
-                        #     f"""Cancellation of order "{order.client_order_id}" / "{order.exchange_order_id}" failed. Invalid transaction hash: "{transaction_hash}"."""
-                        # )
 
                     self.logger().info(
                         f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" successfully cancelled. Transaction hash: "{transaction_hash}"."""
@@ -554,28 +549,45 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""get_clob_order_status_updates response:\n "{self._dump(response)}".""")
 
-                order = DotMap(response, _dynamic=False)["orders"][0]
+                order_response = DotMap(response, _dynamic=False)["orders"]
+                order_update: OrderUpdate
+                if order_response:
+                    order = order_response[0]
+                    if order:
+                        order_status = KujiraOrderStatus.to_hummingbot(KujiraOrderStatus.from_name(order.state))
+                    else:
+                        order_status = in_flight_order.current_state
 
-                if order:
-                    order_status = KujiraOrderStatus.to_hummingbot(KujiraOrderStatus.from_name(order.state))
+                    open_update = OrderUpdate(
+                        trading_pair=in_flight_order.trading_pair,
+                        update_timestamp=time(),
+                        new_state=order_status,
+                        client_order_id=in_flight_order.client_order_id,
+                        exchange_order_id=in_flight_order.exchange_order_id,
+                        misc_updates={
+                            "creation_transaction_hash": in_flight_order.creation_transaction_hash,
+                            "cancelation_transaction_hash": in_flight_order.cancel_tx_hash,
+                        },
+                    )
+
+                    order_update = open_update
                 else:
-                    order_status = in_flight_order.current_state
+                    canceled_update = OrderUpdate(
+                        trading_pair=in_flight_order.trading_pair,
+                        update_timestamp=time(),
+                        new_state=OrderState.CANCELED,
+                        client_order_id=in_flight_order.client_order_id,
+                        exchange_order_id=in_flight_order.exchange_order_id,
+                        misc_updates={
+                            "creation_transaction_hash": in_flight_order.creation_transaction_hash,
+                            "cancelation_transaction_hash": in_flight_order.cancel_tx_hash,
+                        },
+                    )
 
-                open_update = OrderUpdate(
-                    trading_pair=in_flight_order.trading_pair,
-                    update_timestamp=time(),
-                    new_state=order_status,
-                    client_order_id=in_flight_order.client_order_id,
-                    exchange_order_id=in_flight_order.exchange_order_id,
-                    misc_updates={
-                        "creation_transaction_hash": in_flight_order.creation_transaction_hash,
-                        "cancelation_transaction_hash": in_flight_order.cancel_tx_hash,
-                    },
-                )
+                    order_update = canceled_update
 
                 self.logger().debug("get_order_status_update: end")
-
-                return open_update
+                return order_update
 
         no_update = OrderUpdate(
             trading_pair=in_flight_order.trading_pair,
