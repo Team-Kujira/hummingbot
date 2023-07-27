@@ -157,12 +157,6 @@ class GatewayCLOBSPOT(ExchangePyBase):
         sd["api_data_source_initialized"] = self._api_data_source.ready
         return sd
 
-    def start(self, *args, **kwargs):
-        safe_ensure_future(self.start_network())
-
-    def stop(self, *args, **kwargs):
-        safe_ensure_future(self.stop_network())
-
     async def start_network(self):
         if not self.has_started:
             await self._api_data_source.start()
