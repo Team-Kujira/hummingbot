@@ -70,6 +70,8 @@ class GatewayCLOBSPOT(ExchangePyBase):
 
         self._add_forwarders()
 
+        self.has_started = False
+
         super().__init__(client_config_map)
 
     @property
@@ -155,13 +157,22 @@ class GatewayCLOBSPOT(ExchangePyBase):
         sd["api_data_source_initialized"] = self._api_data_source.ready
         return sd
 
+    def start(self, *args, **kwargs):
+        safe_ensure_future(self.start_network())
+
+    def stop(self, *args, **kwargs):
+        safe_ensure_future(self.stop_network())
+
     async def start_network(self):
-        await self._api_data_source.start()
-        await super().start_network()
+        if not self.has_started:
+            await self._api_data_source.start()
+            await super().start_network()
+            self.has_started = True
 
     async def stop_network(self):
         await super().stop_network()
         await self._api_data_source.stop()
+        self.has_started = False
 
     def supported_order_types(self) -> List[OrderType]:
         return self._api_data_source.get_supported_order_types()
@@ -722,3 +733,7 @@ class GatewayCLOBSPOT(ExchangePyBase):
             else self.LONG_POLL_INTERVAL
         )
         return poll_interval
+
+    @property
+    def ready(self) -> bool:
+        return super().ready
