@@ -158,25 +158,21 @@ class GatewayCLOBSPOT(ExchangePyBase):
         return sd
 
     def start(self, *args, **kwargs):
-        super().start(**kwargs)
         safe_ensure_future(self.start_network())
 
     def stop(self, *args, **kwargs):
-        super().stop(**kwargs)
         safe_ensure_future(self.stop_network())
 
     async def start_network(self):
-        await self._api_data_source.start()
-        await super().start_network()
-        # if not self.has_started:
-        #     await self._api_data_source.start()
-        #     await super().start_network()
-        #     self.has_started = True
+        if not self.has_started:
+            await self._api_data_source.start()
+            await super().start_network()
+            self.has_started = True
 
     async def stop_network(self):
         await super().stop_network()
         await self._api_data_source.stop()
-        # self.has_started = False
+        self.has_started = False
 
     def supported_order_types(self) -> List[OrderType]:
         return self._api_data_source.get_supported_order_types()
@@ -740,10 +736,9 @@ class GatewayCLOBSPOT(ExchangePyBase):
 
     @property
     def ready(self) -> bool:
-        # status = super().ready
+        status = super().ready
 
-        # if not status and not self.has_started:
-        #     safe_ensure_future(self.start_network())
+        if not status and not self.has_started:
+            safe_ensure_future(self.start_network())
 
-        # return status
-        return super().ready
+        return status
