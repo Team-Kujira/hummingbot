@@ -37,6 +37,18 @@ from .kujira_helpers import automatic_retry_with_timeout, convert_market_name_to
 from .kujira_types import OrderStatus as KujiraOrderStatus
 
 
+class AsyncLock:
+    def __init__(self):
+        self._lock = asyncio.Lock()
+
+    async def __aenter__(self):
+        await self._lock.acquire()
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        self._lock.release()
+
+
 class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
     def __init__(
@@ -71,14 +83,14 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         }, _dynamic=False)
 
         self._locks = DotMap({
-            "place_order": asyncio.Lock(),
-            "place_orders": asyncio.Lock(),
-            "cancel_order": asyncio.Lock(),
-            "cancel_orders": asyncio.Lock(),
-            "settle_market_funds": asyncio.Lock(),
-            "settle_markets_funds": asyncio.Lock(),
-            "settle_all_markets_funds": asyncio.Lock(),
-            "all_active_orders": asyncio.Lock(),
+            "place_order": AsyncLock(),
+            "place_orders": AsyncLock(),
+            "cancel_order": AsyncLock(),
+            "cancel_orders": AsyncLock(),
+            "settle_market_funds": AsyncLock(),
+            "settle_markets_funds": AsyncLock(),
+            "settle_all_markets_funds": AsyncLock(),
+            "all_active_orders": AsyncLock(),
         }, _dynamic=False)
 
         self._gateway = GatewayHttpClient.get_instance(self._client_config)
