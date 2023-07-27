@@ -733,7 +733,3 @@ class GatewayCLOBSPOT(ExchangePyBase):
             else self.LONG_POLL_INTERVAL
         )
         return poll_interval
-
-    @property
-    def ready(self) -> bool:
-        return super().ready
