@@ -864,7 +864,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                 self._gateway_order_tracker.active_orders if self._gateway_order_tracker else {}
             )
 
-            orders = copy.deepcopy(self._all_active_orders.values())
+            orders = copy.deepcopy(self._all_active_orders).values()
 
             for order in orders:
                 request = {
