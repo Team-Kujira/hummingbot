@@ -291,11 +291,19 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
     async def cancel_order(self, order: GatewayInFlightOrder) -> Tuple[bool, Optional[Dict[str, Any]]]:
         active_order = self._gateway_order_tracker.active_orders.get(order.client_order_id)
 
-        # fillable = self._gateway_order_tracker.all_fillable_orders_by_exchange_order_id.get(
-        #     active_order.exchange_order_id
-        # )
+        if active_order.exchange_order_id is None:
+            await self._update_order_status()
+            active_order = self._gateway_order_tracker.active_orders.get(order.client_order_id)
 
-        if active_order and (
+        await order.get_exchange_order_id()
+
+        fillable = self._gateway_order_tracker.all_fillable_orders_by_exchange_order_id.get(
+            active_order.exchange_order_id
+        )
+
+        if fillable and (
+                active_order
+        ) and (
                 active_order.current_state != OrderState.CANCELED
         ) and (
                 active_order.current_state != OrderState.FILLED
