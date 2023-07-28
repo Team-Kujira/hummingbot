@@ -121,12 +121,10 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         return [OrderType.LIMIT]
 
     async def parent_start(self):
-        # await self.parent.start_network()
-        pass
+        await self.parent.start_network()
 
     async def parent_stop(self):
-        # await self.parent.stop_network()
-        pass
+        await self.parent.stop_network()
 
     async def parent_ready(self):
         # Because Kujira does not rely on client API to maintain the orderbook,
