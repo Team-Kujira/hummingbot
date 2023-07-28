@@ -289,8 +289,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         return place_order_results
 
     async def cancel_order(self, order: GatewayInFlightOrder) -> Tuple[bool, Optional[Dict[str, Any]]]:
-        # active_order = self._gateway_order_tracker.active_orders.get(order.client_order_id)
-
         await self._update_order_status()
         active_order = self._gateway_order_tracker.active_orders.get(order.client_order_id)
 
