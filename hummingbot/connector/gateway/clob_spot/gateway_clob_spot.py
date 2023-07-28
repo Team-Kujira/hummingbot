@@ -62,6 +62,7 @@ class GatewayCLOBSPOT(ExchangePyBase):
         self._trading_pairs = trading_pairs or []
         self._trading_required = trading_required
         self._api_data_source = api_data_source
+        self._api_data_source.parent = self
         self._real_time_balance_update = self._api_data_source.real_time_balance_update
         self._trading_fees: Dict[str, MakerTakerExchangeFeeRates] = {}
         self._last_received_message_timestamp = 0
@@ -158,10 +159,12 @@ class GatewayCLOBSPOT(ExchangePyBase):
         return sd
 
     def start(self, *args, **kwargs):
-        safe_ensure_future(self.start_network())
+        if hasattr(self._api_data_source, 'parent_start'):
+            return safe_ensure_future(self._api_data_source.parent_start())
 
     def stop(self, *args, **kwargs):
-        safe_ensure_future(self.stop_network())
+        if hasattr(self._api_data_source, 'parent_stop'):
+            return safe_ensure_future(self._api_data_source.parent_stop())
 
     async def start_network(self):
         if not self.has_started:

@@ -120,6 +120,12 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
     def get_supported_order_types(self) -> List[OrderType]:
         return [OrderType.LIMIT]
 
+    async def parent_start(self):
+        await self.parent.start_network()
+
+    async def parent_stop(self):
+        await self.parent.stop_network()
+
     @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
     async def start(self):
         self.logger().setLevel("INFO")
