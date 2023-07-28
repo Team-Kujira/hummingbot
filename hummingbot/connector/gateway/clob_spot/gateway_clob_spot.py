@@ -177,6 +177,12 @@ class GatewayCLOBSPOT(ExchangePyBase):
         await self._api_data_source.stop()
         self.has_started = False
 
+    def ready(self) -> bool:
+        if not self.has_started and hasattr(self._api_data_source, 'parent_ready'):
+            safe_ensure_future(self._api_data_source.parent_ready())
+
+        return super().ready
+
     def supported_order_types(self) -> List[OrderType]:
         return self._api_data_source.get_supported_order_types()
 

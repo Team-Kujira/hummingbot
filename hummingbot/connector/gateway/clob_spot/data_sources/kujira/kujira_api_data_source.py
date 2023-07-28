@@ -121,10 +121,17 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         return [OrderType.LIMIT]
 
     async def parent_start(self):
-        await self.parent.start_network()
+        # await self.parent.start_network()
+        pass
 
     async def parent_stop(self):
-        await self.parent.stop_network()
+        # await self.parent.stop_network()
+        pass
+
+    async def parent_ready(self):
+        # Because Kujira does not rely on client API to maintain the orderbook,
+        #   it is needed to restart the network so the orderbook tracer is started again.
+        await self.parent.start_network()
 
     @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
     async def start(self):
