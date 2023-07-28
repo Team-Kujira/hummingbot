@@ -46,6 +46,7 @@ class CLOBAPIDataSourceBase(ABC):
         self._gateway_order_tracker: Optional[GatewayOrderTracker] = None
         self._markets_info: Dict[str, Any] = {}
         self.parent: Optional[ExchangePyBase] = None
+        self.cancel_all_orders_timeout = None
 
     @property
     @abstractmethod

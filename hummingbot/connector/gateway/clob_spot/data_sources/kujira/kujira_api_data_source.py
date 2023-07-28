@@ -92,6 +92,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self._snapshots_min_update_interval = 30
         self._snapshots_max_update_interval = 60
+        self.cancel_all_orders_timeout = TIMEOUT
 
     @property
     def connector_name(self) -> str:

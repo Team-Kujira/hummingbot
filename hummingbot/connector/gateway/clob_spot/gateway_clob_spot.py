@@ -743,3 +743,10 @@ class GatewayCLOBSPOT(ExchangePyBase):
             else self.LONG_POLL_INTERVAL
         )
         return poll_interval
+
+    async def cancel_all(self, timeout_seconds: float) -> List[CancellationResult]:
+        timeout = self._api_data_source.cancel_all_orders_timeout \
+            if self._api_data_source.cancel_all_orders_timeout is not None \
+            else timeout_seconds
+
+        return await super().cancel_all(timeout)
