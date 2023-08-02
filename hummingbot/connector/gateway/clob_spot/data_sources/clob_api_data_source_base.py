@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 from bidict import bidict
 
 from hummingbot.client.config.config_helpers import ClientConfigAdapter
+from hummingbot.connector.exchange_py_base import ExchangePyBase
 from hummingbot.connector.gateway.common_types import CancelOrderResult, PlaceOrderResult
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.gateway.gateway_order_tracker import GatewayOrderTracker
@@ -44,6 +45,8 @@ class CLOBAPIDataSourceBase(ABC):
         self._forwarders_map: Dict[Tuple[Enum, Callable], EventForwarder] = {}
         self._gateway_order_tracker: Optional[GatewayOrderTracker] = None
         self._markets_info: Dict[str, Any] = {}
+        self.parent: Optional[ExchangePyBase] = None
+        self.cancel_all_orders_timeout = None
 
     @property
     @abstractmethod
