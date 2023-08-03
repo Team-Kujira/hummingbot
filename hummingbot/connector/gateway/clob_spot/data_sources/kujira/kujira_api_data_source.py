@@ -343,7 +343,12 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                     )
                 except Exception as exception:
                     # await self.gateway_order_tracker.process_order_not_found(order.client_order_id)
-                    if 'No orders with the specified information exist' in str(exception.args):
+                    if f"""Order "{order.exchange_order_id}" not found on markets""" in str(exception.args):
+                        self.logger().info(
+                            f"""Order "{order.exchange_order_id}" not found on markets"""
+                        )
+
+                    elif 'No orders with the specified information exist' in str(exception.args):
                         self.logger().info(
                             f"""Order "{order.client_order_id}" / "{order.exchange_order_id}" already cancelled."""
                         )
