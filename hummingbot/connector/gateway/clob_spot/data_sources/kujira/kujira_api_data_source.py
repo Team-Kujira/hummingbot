@@ -344,12 +344,14 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                 except Exception as exception:
                     # await self.gateway_order_tracker.process_order_not_found(order.client_order_id)
                     if f"""Order "{order.exchange_order_id}" not found on markets""" in str(exception.args):
-                        order_update = self.get_order_status_update(order)
-                        self.gateway_order_tracker.process_order_update(order_update)
+                        # order_update = self.get_order_status_update(order)
+                        # self.gateway_order_tracker.process_order_update(order_update)
 
                         self.logger().info(
                             f"""Order "{order.exchange_order_id}" not found on markets"""
                         )
+
+                        return True, DotMap({}, _dynamic=False)
 
                     elif 'No orders with the specified information exist' in str(exception.args):
                         self.logger().info(
