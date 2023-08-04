@@ -159,7 +159,11 @@ class GatewayCLOBAPIDataSourceBase(CLOBAPIDataSourceBase, ABC):
             coro=self._update_snapshots_loop()
         )
 
+        await self.parent.start_network()
+
     async def stop(self):
+        await self.parent.stop_network()
+
         self._markets_update_task and self._markets_update_task.cancel()
         self._markets_update_task = None
         self._snapshots_update_task and self._snapshots_update_task.cancel()

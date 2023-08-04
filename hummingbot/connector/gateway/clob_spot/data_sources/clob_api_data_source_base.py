@@ -226,3 +226,6 @@ class CLOBAPIDataSourceBase(ABC):
 
     def remove_listener(self, event_tag: Enum, listener: EventListener):
         self._publisher.remove_listener(event_tag=event_tag, listener=listener)
+
+    def is_cancel_request_in_exchange_synchronous(self) -> bool:
+        return False

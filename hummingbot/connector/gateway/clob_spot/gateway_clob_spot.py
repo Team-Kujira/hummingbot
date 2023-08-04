@@ -124,10 +124,7 @@ class GatewayCLOBSPOT(ExchangePyBase):
 
     @property
     def is_cancel_request_in_exchange_synchronous(self) -> bool:
-        if hasattr(self._api_data_source, 'is_cancel_request_in_exchange_synchronous'):
-            return self._api_data_source.is_cancel_request_in_exchange_synchronous
-        else:
-            return False
+        return self._api_data_source.is_cancel_request_in_exchange_synchronous()
 
     @property
     def is_trading_required(self) -> bool:
@@ -159,12 +156,10 @@ class GatewayCLOBSPOT(ExchangePyBase):
         return sd
 
     def start(self, *args, **kwargs):
-        if hasattr(self._api_data_source, 'parent_start'):
-            return safe_ensure_future(self._api_data_source.parent_start())
+        return safe_ensure_future(self._api_data_source.start())
 
     def stop(self, *args, **kwargs):
-        if hasattr(self._api_data_source, 'parent_stop'):
-            return safe_ensure_future(self._api_data_source.parent_stop())
+        return safe_ensure_future(self._api_data_source.stop())
 
     async def start_network(self):
         if not self.has_started:
@@ -179,8 +174,8 @@ class GatewayCLOBSPOT(ExchangePyBase):
 
     @property
     def ready(self) -> bool:
-        if not self.has_started and hasattr(self._api_data_source, 'parent_ready'):
-            safe_ensure_future(self._api_data_source.parent_ready())
+        if not self.has_started:
+            safe_ensure_future(self._api_data_source.start())
 
         return super().ready
 
