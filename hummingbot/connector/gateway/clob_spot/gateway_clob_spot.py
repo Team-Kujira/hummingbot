@@ -31,7 +31,7 @@ from hummingbot.core.data_type.trade_fee import (
 from hummingbot.core.event.event_forwarder import EventForwarder
 from hummingbot.core.event.events import AccountEvent, BalanceUpdateEvent, MarketEvent
 from hummingbot.core.network_iterator import NetworkStatus
-from hummingbot.core.utils.async_utils import safe_ensure_future
+from hummingbot.core.utils.async_utils import call_sync, safe_ensure_future
 from hummingbot.core.utils.estimate_fee import build_trade_fee
 from hummingbot.core.utils.tracking_nonce import NonceCreator
 from hummingbot.core.web_assistant.auth import AuthBase
@@ -156,10 +156,14 @@ class GatewayCLOBSPOT(ExchangePyBase):
         return sd
 
     def start(self, *args, **kwargs):
-        return safe_ensure_future(self._api_data_source.start())
+        call_sync(self._api_data_source.start(), asyncio.get_event_loop())
+
+        return super().start(**kwargs)
 
     def stop(self, *args, **kwargs):
-        return safe_ensure_future(self._api_data_source.stop())
+        call_sync(self._api_data_source.stop(), asyncio.get_event_loop())
+
+        return super().stop(**kwargs)
 
     async def start_network(self):
         if not self.has_started:
@@ -175,7 +179,7 @@ class GatewayCLOBSPOT(ExchangePyBase):
     @property
     def ready(self) -> bool:
         if not self.has_started:
-            safe_ensure_future(self._api_data_source.start())
+            call_sync(self._api_data_source.start(), asyncio.get_event_loop())
 
         return super().ready
 
