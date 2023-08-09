@@ -10,6 +10,25 @@ from _decimal import Decimal
 from dotmap import DotMap
 
 from hummingbot.client.config.config_helpers import ClientConfigAdapter
+from hummingbot.connector.gateway.clob_spot.data_sources.gateway_clob_api_data_source_base import (
+    GatewayCLOBAPIDataSourceBase,
+)
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_constants import (
+    CONNECTOR,
+    DELAY_BETWEEN_RETRIES,
+    KUJIRA_NATIVE_TOKEN,
+    MARKETS_UPDATE_INTERVAL,
+    NUMBER_OF_RETRIES,
+    TIMEOUT,
+    UPDATE_ORDER_STATUS_INTERVAL,
+)
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers import (
+    AsyncLock,
+    automatic_retry_with_timeout,
+    convert_market_name_to_hb_trading_pair,
+    generate_hash,
+)
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_types import OrderStatus as KujiraOrderStatus
 from hummingbot.connector.gateway.common_types import CancelOrderResult, PlaceOrderResult
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.trading_rule import TradingRule
@@ -22,24 +41,6 @@ from hummingbot.core.event.events import AccountEvent, MarketEvent, OrderBookDat
 from hummingbot.core.gateway.gateway_http_client import GatewayHttpClient
 from hummingbot.core.network_iterator import NetworkStatus
 from hummingbot.core.utils.async_utils import safe_ensure_future, safe_gather
-
-from ..gateway_clob_api_data_source_base import GatewayCLOBAPIDataSourceBase
-from .kujira_constants import (
-    CONNECTOR,
-    DELAY_BETWEEN_RETRIES,
-    KUJIRA_NATIVE_TOKEN,
-    MARKETS_UPDATE_INTERVAL,
-    NUMBER_OF_RETRIES,
-    TIMEOUT,
-    UPDATE_ORDER_STATUS_INTERVAL,
-)
-from .kujira_helpers import (
-    AsyncLock,
-    automatic_retry_with_timeout,
-    convert_market_name_to_hb_trading_pair,
-    generate_hash,
-)
-from .kujira_types import OrderStatus as KujiraOrderStatus
 
 
 class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
