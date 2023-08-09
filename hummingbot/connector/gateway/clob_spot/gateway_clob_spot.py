@@ -62,7 +62,6 @@ class GatewayCLOBSPOT(ExchangePyBase):
         self._trading_pairs = trading_pairs or []
         self._trading_required = trading_required
         self._api_data_source = api_data_source
-        self._api_data_source.parent = self
         self._real_time_balance_update = self._api_data_source.real_time_balance_update
         self._trading_fees: Dict[str, MakerTakerExchangeFeeRates] = {}
         self._last_received_message_timestamp = 0
@@ -176,9 +175,6 @@ class GatewayCLOBSPOT(ExchangePyBase):
 
     @property
     def ready(self) -> bool:
-        if not self.has_started:
-            safe_ensure_future(self.start_network())
-
         return super().ready
 
     def supported_order_types(self) -> List[OrderType]:
