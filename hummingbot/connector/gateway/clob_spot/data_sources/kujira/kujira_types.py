@@ -68,8 +68,6 @@ class OrderStatus(Enum):
 class OrderType(Enum):
     MARKET = 'MARKET',
     LIMIT = 'LIMIT',
-    IOC = 'IOC',  # Immediate or Cancel
-    POST_ONLY = 'POST_ONLY',
 
     @staticmethod
     def from_name(name: str):
@@ -77,10 +75,6 @@ class OrderType(Enum):
             return OrderType.MARKET
         elif name == "LIMIT":
             return OrderType.LIMIT
-        elif name == "IOC":
-            return OrderType.IOC
-        elif name == "POST_ONLY":
-            return OrderType.POST_ONLY
         else:
             raise ValueError(f"Unknown order type: {name}")
 

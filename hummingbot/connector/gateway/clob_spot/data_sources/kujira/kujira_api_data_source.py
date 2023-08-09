@@ -120,7 +120,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         ]
 
     def get_supported_order_types(self) -> List[OrderType]:
-        return [OrderType.LIMIT]
+        return [OrderType.LIMIT, OrderType.MARKET]
 
     @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
     async def start(self):
