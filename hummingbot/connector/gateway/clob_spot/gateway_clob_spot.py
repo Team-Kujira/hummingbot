@@ -156,6 +156,7 @@ class GatewayCLOBSPOT(ExchangePyBase):
 
     def start(self, *args, **kwargs):
         super().start(**kwargs)
+        safe_ensure_future(self.start_network())
         safe_ensure_future(self._api_data_source.start())
 
     def stop(self, *args, **kwargs):
