@@ -62,6 +62,7 @@ class GatewayCLOBSPOT(ExchangePyBase):
         self._trading_pairs = trading_pairs or []
         self._trading_required = trading_required
         self._api_data_source = api_data_source
+        self._api_data_source.parent = self
         self._real_time_balance_update = self._api_data_source.real_time_balance_update
         self._trading_fees: Dict[str, MakerTakerExchangeFeeRates] = {}
         self._last_received_message_timestamp = 0
@@ -69,6 +70,8 @@ class GatewayCLOBSPOT(ExchangePyBase):
         self._nonce_provider: Optional[NonceCreator] = NonceCreator.for_milliseconds()
 
         self._add_forwarders()
+
+        self.has_started = False
 
         super().__init__(client_config_map)
 
@@ -155,13 +158,31 @@ class GatewayCLOBSPOT(ExchangePyBase):
         sd["api_data_source_initialized"] = self._api_data_source.ready
         return sd
 
+    def start(self, *args, **kwargs):
+        if hasattr(self._api_data_source, 'parent_start'):
+            return safe_ensure_future(self._api_data_source.parent_start())
+
+    def stop(self, *args, **kwargs):
+        if hasattr(self._api_data_source, 'parent_stop'):
+            return safe_ensure_future(self._api_data_source.parent_stop())
+
     async def start_network(self):
-        await self._api_data_source.start()
-        await super().start_network()
+        if not self.has_started:
+            await self._api_data_source.start()
+            await super().start_network()
+            self.has_started = True
 
     async def stop_network(self):
         await super().stop_network()
         await self._api_data_source.stop()
+        self.has_started = False
+
+    @property
+    def ready(self) -> bool:
+        if not self.has_started and hasattr(self._api_data_source, 'parent_ready'):
+            safe_ensure_future(self._api_data_source.parent_ready())
+
+        return super().ready
 
     def supported_order_types(self) -> List[OrderType]:
         return self._api_data_source.get_supported_order_types()
