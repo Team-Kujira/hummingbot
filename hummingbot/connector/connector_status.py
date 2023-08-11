@@ -62,6 +62,7 @@ connector_status = {
     'vertex': 'bronze',
     'vertex_testnet': 'bronze',
     'injective_v2': 'bronze',
+    'kujira': 'bronze',
 }
 
 warning_messages = {
