@@ -64,6 +64,7 @@ connector_status = {
     'injective_v2': 'bronze',
     'injective_v2_perpetual': 'bronze',
     'plenty': 'bronze',
+    'kujira': 'bronze',
 }
 
 warning_messages = {
