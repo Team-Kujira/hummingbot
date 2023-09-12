@@ -1,29 +1,21 @@
 # import asyncio
-import json
+from hummingbot.client.config.config_crypt import ETHKeyFileSecretManger, store_password_verification, validate_password
+from hummingbot.client.config.security import Security
+
 # import math
 # import re
 from decimal import Decimal
+
 # from typing import Any, Dict, List, Union
 from unittest.mock import AsyncMock, MagicMock, patch
+
 #
 # import pandas as pd
 from aioresponses import aioresponses
+
 #
 # from hummingbot.connector.gateway.clob_spot.data_sources.dexalot import dexalot_constants as CONSTANTS
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_source import KujiraAPIDataSource
-# from hummingbot.connector.gateway.clob_spot.data_sources.dexalot.dexalot_constants import HB_TO_DEXALOT_STATUS_MAP
-# from hummingbot.connector.gateway.common_types import PlaceOrderResult
-# from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
-from hummingbot.connector.test_support.gateway_clob_api_data_source_test import AbstractGatewayCLOBAPIDataSourceTests
-from hummingbot.connector.test_support.network_mocking_assistant import NetworkMockingAssistant
-# from hummingbot.connector.utils import split_hb_trading_pair
-from hummingbot.core.data_type.common import OrderType, TradeType
-# from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate
-# from hummingbot.core.data_type.order_book_message import OrderBookMessage
-# from hummingbot.core.data_type.trade_fee import TradeFeeBase
-# from hummingbot.core.event.event_logger import EventLogger
-
-
 
 # import time
 # import unittest
@@ -35,8 +27,26 @@ from hummingbot.core.data_type.common import OrderType, TradeType
 # from hummingbot.connector.connector_base import ConnectorBase
 # from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_source import KujiraAPIDataSource
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
+
+# from hummingbot.connector.gateway.clob_spot.data_sources.dexalot.dexalot_constants import HB_TO_DEXALOT_STATUS_MAP
+# from hummingbot.connector.gateway.common_types import PlaceOrderResult
+# from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
+from hummingbot.connector.test_support.gateway_clob_api_data_source_test import AbstractGatewayCLOBAPIDataSourceTests
+from hummingbot.connector.test_support.network_mocking_assistant import NetworkMockingAssistant
+
 # from hummingbot.connector.gateway.gateway_order_tracker import GatewayOrderTracker
 from hummingbot.connector.utils import combine_to_hb_trading_pair
+
+# from hummingbot.connector.utils import split_hb_trading_pair
+from hummingbot.core.data_type.common import OrderType, TradeType
+
+# from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate
+# from hummingbot.core.data_type.order_book_message import OrderBookMessage
+# from hummingbot.core.data_type.trade_fee import TradeFeeBase
+# from hummingbot.core.event.event_logger import EventLogger
+
+
+
 # from hummingbot.core.data_type.common import OrderType, TradeType
 #
 #
@@ -133,17 +143,24 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         cls.trading_pair = combine_to_hb_trading_pair(base=cls.base, quote=cls.quote)
         cls.owner_address = "kujira1ga9qk68ne00wfflv7y2v92epaajt59e554uulc" # noqa: mock
 
+        # If removed, an error occurs
+        password = "asdf"
+        secrets_manager = ETHKeyFileSecretManger(password)
+        store_password_verification(secrets_manager)
+
+        Security.login(secrets_manager)
+
     def setUp(self) -> None:
         self.mock_api = aioresponses()
         self.mock_api.start()
-        self.mocking_assistant = NetworkMockingAssistant()
-        self.ws_connect_patch = patch("aiohttp.ClientSession.ws_connect", new_callable=AsyncMock)
-        self.ws_connect_mock = self.ws_connect_patch.start()
+        # self.mocking_assistant = NetworkMockingAssistant()
+        # self.ws_connect_patch = patch("aiohttp.ClientSession.ws_connect", new_callable=AsyncMock)
+        # self.ws_connect_mock = self.ws_connect_patch.start()
         super().setUp()
 
     def tearDown(self) -> None:
         self.mock_api.stop()
-        self.ws_connect_patch.stop()
+        # self.ws_connect_patch.stop()
         super().tearDown()
 
     def build_api_data_source(self, with_api_key: bool = True) -> KujiraAPIDataSource:
@@ -157,37 +174,12 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             connector_spec=connector_spec,
             client_config_map=self.client_config_map,
         )
+        # self.async_run_with_timeout(coro=data_source.start())
         return data_source
 
     def exchange_symbol_for_tokens(self, base_token: str, quote_token: str) -> str:
         exchange_trading_pair = f"{base_token}/{quote_token}"
         return exchange_trading_pair
-
-    def configure_last_traded_price(self, trading_pair: str, last_traded_price: Decimal):
-        self.ws_connect_mock.return_value = self.mocking_assistant.create_websocket_mock()
-        resp = {"data": [{"execId": 1675046315,
-                          "price": str(self.expected_last_traded_price),
-                          "quantity": "951.14",
-                          "takerSide": 1,
-                          "ts": "2023-03-07T14:17:52.000Z"}],
-                "pair": self.exchange_trading_pair,
-                "type": "lastTrade"}
-        self.mocking_assistant.add_websocket_aiohttp_message(
-            self.ws_connect_mock.return_value, json.dumps(resp)
-        )
-
-    # def test_get_last_traded_price(self):
-    #     self.configure_last_traded_price(
-    #         trading_pair=self.trading_pair, last_traded_price=self.expected_last_traded_price,
-    #     )
-    #     self.mocking_assistant.run_until_all_aiohttp_messages_delivered(
-    #         websocket_mock=self.ws_connect_mock.return_value,
-    #     )
-    #     last_trade_price = self.async_run_with_timeout(
-    #         coro=self.data_source.get_last_traded_price(trading_pair=self.trading_pair)
-    #     )
-    #
-    #     self.assertEqual(self.expected_last_traded_price, last_trade_price)
 
     def configure_place_order_response(
             self,
@@ -216,6 +208,12 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             ]
         )
 
+    def configure_update_markets(self):
+        response = {
+            "teste": "teste",
+        }
+        self.gateway_instance_mock.get_clob_markets.return_value = response
+
     @patch(
         "hummingbot.connector.gateway.clob_spot.data_sources.gateway_clob_api_data_source_base"
         ".GatewayCLOBAPIDataSourceBase._sleep",
@@ -235,9 +233,10 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             price=self.expected_buy_order_price,
             size=self.expected_buy_order_size,
         )
+        self.configure_update_markets()
         order = GatewayInFlightOrder(
             client_order_id=self.expected_buy_client_order_id,
-            trading_pair=self.trading_pair,
+            trading_pair=self.exchange_symbol_for_tokens(self.base, self.quote),
             order_type=OrderType.LIMIT,
             trade_type=TradeType.BUY,
             creation_timestamp=self.initial_timestamp,
