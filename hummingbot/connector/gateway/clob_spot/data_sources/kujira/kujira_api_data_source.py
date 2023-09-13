@@ -539,6 +539,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         hb_balances = {}
         for token, balance in balances.items():
+            balance = Decimal(balance)
             hb_balances[token] = DotMap({}, _dynamic=False)
             hb_balances[token]["total_balance"] = balance
             hb_balances[token]["available_balance"] = balance
