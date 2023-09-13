@@ -40,7 +40,7 @@ def automatic_retry_with_timeout(retries=0, delay=0, timeout=None):
         async def wrapper(*args, **kwargs):
             errors = []
 
-            for i in range(retries):
+            for i in range(retries + 1):
                 try:
                     result = await asyncio.wait_for(func(*args, **kwargs), timeout=timeout)
 
