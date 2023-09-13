@@ -1,6 +1,6 @@
 import asyncio
 from typing import Any, Dict, List, Union
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from _decimal import Decimal
 
@@ -29,19 +29,20 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
     def setUp(self) -> None:
         super().setUp()
 
+        self.configure_asyncio_sleep()
         self.data_source._gateway = self.gateway_instance_mock
         self.configure_get_market()
-        # asyncio.sleep = AsyncMock()
 
     def tearDown(self) -> None:
         super().tearDown()
 
-    def build_api_data_source(self, with_api_key: bool = True) -> KujiraAPIDataSource:
+    def build_api_data_source(self, with_api_key: bool = True) -> Any:
         connector_spec = {
             "chain": self.chain,
             "network": self.network,
             "wallet_address": self.owner_address,
         }
+
         data_source = KujiraAPIDataSource(
             trading_pairs=[self.trading_pair],
             connector_spec=connector_spec,
@@ -157,6 +158,12 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
                     }
                 }
             }
+
+    @staticmethod
+    def configure_asyncio_sleep():
+        async def sleep(*_args, **_kwargs):
+            pass
+        patch.object(asyncio, "sleep", new_callable=sleep)
 
     def configure_place_order_response(
         self,
