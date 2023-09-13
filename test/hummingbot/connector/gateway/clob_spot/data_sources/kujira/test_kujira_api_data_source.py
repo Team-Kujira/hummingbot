@@ -255,7 +255,7 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             quote_total_balance: Decimal,
             quote_available_balance: Decimal
     ):
-        pass
+        self.gateway_instance_mock.get_balances.return_value = self.configure_gateway_get_balances_response()
 
     def configure_empty_order_fills_response(self):
         pass
@@ -328,6 +328,15 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             }
         }, _dynamic=False)
 
+    def configure_gateway_get_balances_response(self):
+        return {
+            "balances": {
+                "USK": "3.522325",
+                "axlUSDC": "1.999921",
+                "KUJI": "6.355439"
+            }
+        }
+
     @property
     def expected_maker_taker_fee_rates(self) -> MakerTakerExchangeFeeRates:
         return MakerTakerExchangeFeeRates(
@@ -344,6 +353,22 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
     @property
     def expected_last_traded_price(self) -> Decimal:
         return Decimal("0.641")
+
+    @property
+    def expected_base_total_balance(self) -> Decimal:
+        return Decimal("6.355439")
+
+    @property
+    def expected_base_available_balance(self) -> Decimal:
+        return Decimal("6.355439")
+
+    @property
+    def expected_quote_total_balance(self) -> Decimal:
+        return Decimal("3.522325")
+
+    @property
+    def expected_quote_available_balance(self) -> Decimal:
+        return Decimal("3.522325")
 
     def test_batch_order_cancel(self):
         super().test_batch_order_cancel()
