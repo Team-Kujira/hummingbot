@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 from typing import Any, Dict, List, Union
 from unittest.mock import patch
 
@@ -6,7 +7,6 @@ from _decimal import Decimal
 from bidict import bidict
 from dotmap import DotMap
 
-from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_source import KujiraAPIDataSource
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers import (
     convert_market_name_to_hb_trading_pair,
 )
@@ -25,6 +25,16 @@ from hummingbot.core.data_type.trade_fee import (
     TradeFeeBase,
 )
 from hummingbot.core.network_iterator import NetworkStatus
+
+module_3 = importlib.import_module("hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_constants")
+module_3.NUMBER_OF_RETRIES = 0
+module_3.DELAY_BETWEEN_RETRIES = 0
+module_3.TIMEOUT = None
+
+
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_source import (  # noqa: E402
+    KujiraAPIDataSource,
+)
 
 
 class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBAPIDataSourceTests):
