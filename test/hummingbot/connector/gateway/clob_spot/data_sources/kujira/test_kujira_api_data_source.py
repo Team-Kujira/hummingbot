@@ -223,37 +223,52 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
     def test_get_order_status_response(self):
         super().test_get_order_status_update()
 
-    def get_clob_ticker_response(self, trading_pair: str, last_traded_price: Decimal) -> List[Dict[str, Any]]:
+    def get_clob_ticker_response(
+            self,
+            trading_pair: str,
+            last_traded_price: Decimal
+    ) -> List[Dict[str, Any]]:
         pass
 
-    def configure_account_balances_response(self, base_total_balance: Decimal, base_available_balance: Decimal,
-                                            quote_total_balance: Decimal, quote_available_balance: Decimal):
+    def configure_account_balances_response(
+            self,
+            base_total_balance: Decimal,
+            base_available_balance: Decimal,
+            quote_total_balance: Decimal,
+            quote_available_balance: Decimal
+    ):
         pass
 
     def configure_empty_order_fills_response(self):
         pass
 
-    def configure_trade_fill_response(self, timestamp: float, exchange_order_id: str, price: Decimal, size: Decimal,
-                                      fee: TradeFeeBase, trade_id: Union[str, int], is_taker: bool):
+    def configure_trade_fill_response(
+            self,
+            timestamp: float,
+            exchange_order_id: str,
+            price: Decimal,
+            size: Decimal,
+            fee: TradeFeeBase, trade_id: Union[str, int], is_taker: bool):
         pass
 
-    def configure_gateway_get_clob_markets_response(self):
+    @staticmethod
+    def configure_gateway_get_clob_markets_response():
         return DotMap({
             "network": "mainnet",
             "timestamp": 1694561843115,
             "latency": 0.001,
             "markets": {
-                "KUJI-USK": {
-                    "id": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf",
-                    "name": "KUJI/USK",
+                "KUJI-USK": { # noqa: mock
+                    "id": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf", # noqa: mock
+                    "name": "KUJI/USK", # noqa: mock
                     "baseToken": {
-                        "id": "ukuji",
-                        "name": "KUJI",
-                        "symbol": "KUJI",
+                        "id": "ukuji", # noqa: mock
+                        "name": "KUJI", # noqa: mock
+                        "symbol": "KUJI", # noqa: mock
                         "decimals": 6
                     },
                     "quoteToken": {
-                        "id": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk",
+                        "id": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk", # noqa: mock
                         "name": "USK",
                         "symbol": "USK",
                         "decimals": 6
@@ -270,15 +285,15 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
                     },
                     "deprecated": False,
                     "connectorMarket": {
-                        "address": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf",
-                        "denoms": [
+                        "address": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf", # noqa: mock
+                        "denoms": [ # noqa: mock
                             {
-                                "reference": "ukuji",
+                                "reference": "ukuji", # noqa: mock
                                 "decimals": 6,
-                                "symbol": "KUJI"
+                                "symbol": "KUJI" # noqa: mock
                             },
                             {
-                                "reference": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk",
+                                "reference": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk", # noqa: mock
                                 "decimals": 6,
                                 "symbol": "USK"
                             }
@@ -287,9 +302,9 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
                             "decimal_places": 3
                         },
                         "decimalDelta": 0,
-                        "multiswap": True,
-                        "pool": "kujira1g9xcvvh48jlckgzw8ajl6dkvhsuqgsx2g8u3v0a6fx69h7f8hffqaqu36t",
-                        "calc": "kujira1e6fjnq7q20sh9cca76wdkfg69esha5zn53jjewrtjgm4nktk824stzyysu"
+                        "multiswap": True, # noqa: mock
+                        "pool": "kujira1g9xcvvh48jlckgzw8ajl6dkvhsuqgsx2g8u3v0a6fx69h7f8hffqaqu36t", # noqa: mock
+                        "calc": "kujira1e6fjnq7q20sh9cca76wdkfg69esha5zn53jjewrtjgm4nktk824stzyysu" # noqa: mock
                     }
                 }
             }
