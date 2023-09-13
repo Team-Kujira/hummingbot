@@ -228,9 +228,6 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             "direction": "BUY"
         })]
 
-    def test_get_order_status_response(self):
-        super().test_get_order_status_update()
-
     def get_clob_ticker_response(
             self,
             trading_pair: str,
