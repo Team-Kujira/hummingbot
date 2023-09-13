@@ -56,9 +56,6 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
 
         return data_source
 
-    def test_batch_order_create(self):
-        super().test_batch_order_create()
-
     @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.ping_gateway")
     def test_gateway_ping_gateway(self, *_args):
         self.data_source._gateway.ping_gateway.return_value = True
@@ -175,6 +172,14 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
                 }
             ]
         }
+
+    @property
+    def expected_buy_client_order_id(self) -> str:
+        return "03719e91d18db65ec3bf5554d678e5b4"
+
+    @property
+    def expected_sell_client_order_id(self) -> str:
+        return "02719e91d18db65ec3bf5554d678e5b2"
 
     @property
     def expected_buy_exchange_order_id(self) -> str:
