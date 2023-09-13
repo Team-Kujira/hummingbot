@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Union
 from unittest.mock import patch
 
 from _decimal import Decimal
+from bidict import bidict
 from dotmap import DotMap
 
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_source import KujiraAPIDataSource
@@ -14,7 +15,8 @@ from hummingbot.connector.test_support.gateway_clob_api_data_source_test import 
 from hummingbot.connector.utils import combine_to_hb_trading_pair
 from hummingbot.core.data_type.common import OrderType, TradeType
 from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate
-from hummingbot.core.data_type.trade_fee import TradeFeeBase
+from hummingbot.core.data_type.order_book_message import OrderBookMessage
+from hummingbot.core.data_type.trade_fee import MakerTakerExchangeFeeRates, TradeFeeBase
 from hummingbot.core.network_iterator import NetworkStatus
 
 
@@ -94,6 +96,7 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
 
     @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.ping_gateway")
     def test_check_network_status_with_gateway_exception(self, *_args):
+        self.configure_asyncio_sleep()
         self.data_source._gateway.ping_gateway.side_effect = RuntimeError("Unknown error")
 
         result = self.async_run_with_timeout(
@@ -183,7 +186,7 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             base_token: str,
             quote_token: str
     ) -> str:
-        return f"{base_token}/{quote_token}"
+        return f"{base_token}-{quote_token}"
 
     def get_trading_pairs_info_response(self) -> List[Dict[str, Any]]:
         response = self.configure_gateway_get_clob_markets_response()
@@ -310,6 +313,15 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             }
         }, _dynamic=False)
 
+    @property
+    def expected_maker_taker_fee_rates(self) -> MakerTakerExchangeFeeRates:
+        return MakerTakerExchangeFeeRates(
+            maker=Decimal("0.075"),
+            taker=Decimal("0.15"),
+            maker_flat_fees=[],
+            taker_flat_fees=[],
+        )
+
     def test_batch_order_cancel(self):
         super().test_batch_order_cancel()
 
@@ -344,7 +356,20 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         super().test_get_last_traded_price()
 
     def test_get_order_book_snapshot(self):
-        super().test_get_order_book_snapshot()
+        self.configure_orderbook_snapshot(
+            timestamp=self.initial_timestamp, bids=[[9, 1], [8, 2]], asks=[[11, 3]]
+        )
+        order_book_snapshot: OrderBookMessage = self.async_run_with_timeout(
+            coro=self.data_source.get_order_book_snapshot(trading_pair=self.trading_pair)
+        )
+
+        self.assertLess(float(0), order_book_snapshot.timestamp)
+        self.assertEqual(2, len(order_book_snapshot.bids))
+        self.assertEqual(9, order_book_snapshot.bids[0].price)
+        self.assertEqual(1, order_book_snapshot.bids[0].amount)
+        self.assertEqual(1, len(order_book_snapshot.asks))
+        self.assertEqual(11, order_book_snapshot.asks[0].price)
+        self.assertEqual(3, order_book_snapshot.asks[0].amount)
 
     def test_get_order_status_update(self):
         creation_transaction_hash = "0x7cb2eafc389349f86da901cdcbfd9119425a2ea84d61c17b6ded778b6fd2g81d"  # noqa: mock
@@ -378,7 +403,11 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         self.assertEqual(self.expected_buy_exchange_order_id, status_update.exchange_order_id)
 
     def test_get_symbol_map(self):
-        super().test_get_symbol_map()
+        symbol_map = self.async_run_with_timeout(coro=self.data_source.get_symbol_map())
+
+        self.assertIsInstance(symbol_map, bidict)
+        self.assertEqual(1, len(symbol_map))
+        self.assertIn(self.exchange_trading_pair, symbol_map.inverse)
 
     def test_get_trading_fees(self):
         super().test_get_trading_fees()
