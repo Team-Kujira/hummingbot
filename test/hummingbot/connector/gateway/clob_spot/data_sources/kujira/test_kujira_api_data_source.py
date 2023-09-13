@@ -137,6 +137,10 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         )
         self.gateway_instance_mock.clob_place_order.return_value["id"] = "1"
 
+    def configure_place_order_failure_response(self):
+        super().configure_place_order_failure_response()
+        self.gateway_instance_mock.clob_place_order.return_value["id"] = "1"
+
     def configure_batch_order_create_response(
         self,
         timestamp: float,
@@ -438,4 +442,19 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         super().test_place_order()
 
     def test_place_order_transaction_fails(self):
-        super().test_place_order_transaction_fails()
+        self.configure_place_order_failure_response()
+
+        order = GatewayInFlightOrder(
+            client_order_id=self.expected_buy_client_order_id,
+            trading_pair=self.trading_pair,
+            order_type=OrderType.LIMIT,
+            trade_type=TradeType.BUY,
+            creation_timestamp=self.initial_timestamp,
+            price=self.expected_buy_order_price,
+            amount=self.expected_buy_order_size,
+        )
+
+        with self.assertRaises(Exception):
+            self.async_run_with_timeout(
+                coro=self.data_source.place_order(order=order)
+            )
