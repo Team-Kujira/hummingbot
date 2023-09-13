@@ -725,19 +725,20 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         # self.logger().debug("check_network_status: start")
 
         try:
-            await self._gateway_ping_gateway()
+            status = await self._gateway_ping_gateway()
 
-            output = NetworkStatus.CONNECTED
+            if status:
+                return NetworkStatus.CONNECTED
+            else:
+                return NetworkStatus.NOT_CONNECTED
         except asyncio.CancelledError:
             raise
         except Exception as exception:
             self.logger().error(exception)
 
-            output = NetworkStatus.NOT_CONNECTED
+            return NetworkStatus.NOT_CONNECTED
 
         # self.logger().debug("check_network_status: end")
-
-        return output
 
     @property
     def is_cancel_request_in_exchange_synchronous(self) -> bool:
@@ -956,7 +957,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
             await asyncio.sleep(UPDATE_ORDER_STATUS_INTERVAL)
 
     @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
-    async def _gateway_ping_gateway(self, request):
+    async def _gateway_ping_gateway(self, _request=None):
         return await self._gateway.ping_gateway()
 
     @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
