@@ -212,7 +212,8 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         candidate_orders = [in_flight_order]
         client_ids = []
         for order_to_create in orders_to_create:
-            order_to_create.client_order_id = generate_hash(order_to_create)
+            if not order_to_create.client_order_id:
+                order_to_create.client_order_id = generate_hash(order_to_create)
             client_ids.append(order_to_create.client_order_id)
 
             candidate_order = in_flight_order.InFlightOrder(
