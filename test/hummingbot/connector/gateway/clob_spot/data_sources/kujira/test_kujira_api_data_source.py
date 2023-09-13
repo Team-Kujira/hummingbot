@@ -12,8 +12,8 @@ from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers i
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.test_support.gateway_clob_api_data_source_test import AbstractGatewayCLOBAPIDataSourceTests
 from hummingbot.connector.utils import combine_to_hb_trading_pair
-from hummingbot.core.data_type.common import TradeType
-from hummingbot.core.data_type.in_flight_order import OrderState
+from hummingbot.core.data_type.common import OrderType, TradeType
+from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate
 from hummingbot.core.data_type.trade_fee import TradeFeeBase
 from hummingbot.core.network_iterator import NetworkStatus
 
@@ -112,7 +112,7 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
 
     @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.get_clob_markets")
     def configure_get_market(self, *_args):
-        self.data_source._gateway.get_clob_markets.return_value = self.configure_get_market_response()
+        self.data_source._gateway.get_clob_markets.return_value = self.configure_gateway_get_clob_markets_response()
 
     def configure_place_order_response(
         self,
@@ -145,33 +145,6 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             created_orders=created_orders,
         )
         self.gateway_instance_mock.clob_batch_order_modify.return_value["ids"] = ["1", "2"]
-
-    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.get_clob_order_status_updates")
-    def configure_get_order_response(self, *_args):
-        self.data_source._gateway.get_clob_order_status_updates.return_value = {
-            "network": "mainnet",
-            "timestamp": 1694619386793,
-            "latency": 7.778,
-            "orders": [
-                {
-                    "id": "1370335",
-                    "orderHash": "",
-                    "marketId": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf", # noqa: mock
-                    "active": "",
-                    "subaccountId": "", # noqa: mock
-                    "executionType": "",
-                    "orderType": "LIMIT",
-                    "price": "0.616",
-                    "triggerPrice": "",
-                    "quantity": "0.24777",
-                    "filledQuantity": "",
-                    "state": "FILLED",
-                    "createdAt": "1694553828194861000",
-                    "updatedAt": "",
-                    "direction": "BUY"
-                }
-            ]
-        }
 
     @property
     def expected_buy_client_order_id(self) -> str:
@@ -213,7 +186,7 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         return f"{base_token}/{quote_token}"
 
     def get_trading_pairs_info_response(self) -> List[Dict[str, Any]]:
-        response = self.configure_get_market_response()
+        response = self.configure_gateway_get_clob_markets_response()
 
         market = response.markets[list(response.markets.keys())[0]]
 
@@ -229,8 +202,26 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             client_order_id: str,
             status: OrderState
     ) -> List[Dict[str, Any]]:
-        orders = self.data_source._gateway.get_clob_order_status_updates.return_value
-        return [{"exchange_order_id": orders.orders[0].id, "order": orders[0]}]
+        return [DotMap({
+            "id": exchange_order_id,
+            "orderHash": "",
+            "marketId": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf", # noqa: mock
+            "active": "",
+            "subaccountId": "", # noqa: mock
+            "executionType": "",
+            "orderType": "LIMIT",
+            "price": "0.616",
+            "triggerPrice": "",
+            "quantity": "0.24777",
+            "filledQuantity": "",
+            "state": status,
+            "createdAt": timestamp,
+            "updatedAt": "",
+            "direction": "BUY"
+        })]
+
+    def test_get_order_status_response(self):
+        super().test_get_order_status_update()
 
     def get_clob_ticker_response(self, trading_pair: str, last_traded_price: Decimal) -> List[Dict[str, Any]]:
         pass
@@ -246,7 +237,7 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
                                       fee: TradeFeeBase, trade_id: Union[str, int], is_taker: bool):
         pass
 
-    def configure_get_market_response(self):
+    def configure_gateway_get_clob_markets_response(self):
         return DotMap({
             "network": "mainnet",
             "timestamp": 1694561843115,
@@ -341,7 +332,35 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         super().test_get_order_book_snapshot()
 
     def test_get_order_status_update(self):
-        super().test_get_order_status_update()
+        creation_transaction_hash = "0x7cb2eafc389349f86da901cdcbfd9119425a2ea84d61c17b6ded778b6fd2g81d"  # noqa: mock
+        in_flight_order = GatewayInFlightOrder(
+            client_order_id=self.expected_buy_client_order_id,
+            trading_pair=self.trading_pair,
+            order_type=OrderType.LIMIT,
+            trade_type=TradeType.BUY,
+            creation_timestamp=self.initial_timestamp,
+            price=self.expected_buy_order_price,
+            amount=self.expected_buy_order_size,
+            creation_transaction_hash=creation_transaction_hash,
+            exchange_order_id=self.expected_buy_exchange_order_id,
+        )
+        self.enqueue_order_status_response(
+            timestamp=self.initial_timestamp + 1,
+            trading_pair=in_flight_order.trading_pair,
+            exchange_order_id=self.expected_buy_exchange_order_id,
+            client_order_id=in_flight_order.client_order_id,
+            status=OrderState.PENDING_CREATE,
+        )
+
+        status_update: OrderUpdate = self.async_run_with_timeout(
+            coro=self.data_source.get_order_status_update(in_flight_order=in_flight_order)
+        )
+
+        self.assertEqual(self.trading_pair, status_update.trading_pair)
+        self.assertLess(self.initial_timestamp, status_update.update_timestamp)
+        self.assertEqual(OrderState.PENDING_CREATE, status_update.new_state)
+        self.assertEqual(in_flight_order.client_order_id, status_update.client_order_id)
+        self.assertEqual(self.expected_buy_exchange_order_id, status_update.exchange_order_id)
 
     def test_get_symbol_map(self):
         super().test_get_symbol_map()
