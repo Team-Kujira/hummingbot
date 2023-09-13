@@ -303,3 +303,63 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
                 }
             }
         }, _dynamic=False)
+
+    def test_batch_order_cancel(self):
+        super().test_batch_order_cancel()
+
+    def test_batch_order_create(self):
+        super().test_batch_order_create()
+
+    def test_cancel_order(self):
+        super().test_cancel_order()
+
+    def test_cancel_order_transaction_fails(self):
+        super().test_cancel_order_transaction_fails()
+
+    def test_check_network_status(self):
+        super().test_check_network_status()
+
+    def test_delivers_balance_events(self):
+        super().test_delivers_balance_events()
+
+    def test_delivers_order_book_snapshot_events(self):
+        super().test_delivers_order_book_snapshot_events()
+
+    def test_get_account_balances(self):
+        super().test_get_account_balances()
+
+    def test_get_all_order_fills(self):
+        super().test_get_all_order_fills()
+
+    def test_get_all_order_fills_no_fills(self):
+        super().test_get_all_order_fills_no_fills()
+
+    def test_get_last_traded_price(self):
+        super().test_get_last_traded_price()
+
+    def test_get_order_book_snapshot(self):
+        super().test_get_order_book_snapshot()
+
+    def test_get_order_status_update(self):
+        super().test_get_order_status_update()
+
+    def test_get_symbol_map(self):
+        super().test_get_symbol_map()
+
+    def test_get_trading_fees(self):
+        super().test_get_trading_fees()
+
+    def test_get_trading_rules(self):
+        super().test_get_trading_rules()
+
+    def test_maximum_delay_between_requests_for_snapshot_events(self):
+        super().test_maximum_delay_between_requests_for_snapshot_events()
+
+    def test_minimum_delay_between_requests_for_snapshot_events(self):
+        super().test_minimum_delay_between_requests_for_snapshot_events()
+
+    def test_place_order(self):
+        super().test_place_order()
+
+    def test_place_order_transaction_fails(self):
+        super().test_place_order_transaction_fails()
