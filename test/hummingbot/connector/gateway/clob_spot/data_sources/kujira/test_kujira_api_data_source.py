@@ -33,7 +33,6 @@ module_3.NUMBER_OF_RETRIES = 0
 module_3.DELAY_BETWEEN_RETRIES = 0
 module_3.TIMEOUT = None
 
-
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_source import (  # noqa: E402
     KujiraAPIDataSource,
 )
@@ -130,6 +129,7 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
     def configure_asyncio_sleep():
         async def sleep(*_args, **_kwargs):
             pass
+
         patch.object(asyncio, "sleep", new_callable=sleep)
 
     @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.get_clob_markets")
@@ -205,9 +205,9 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         return 6
 
     def exchange_symbol_for_tokens(
-            self,
-            base_token: str,
-            quote_token: str
+        self,
+        base_token: str,
+        quote_token: str
     ) -> str:
         return f"{base_token}-{quote_token}"
 
@@ -221,19 +221,19 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         return [{"market_name": market_name, "market": market}]
 
     def get_order_status_response(
-            self,
-            timestamp: float,
-            trading_pair: str,
-            exchange_order_id: str,
-            client_order_id: str,
-            status: OrderState
+        self,
+        timestamp: float,
+        trading_pair: str,
+        exchange_order_id: str,
+        client_order_id: str,
+        status: OrderState
     ) -> List[Dict[str, Any]]:
         return [DotMap({
             "id": exchange_order_id,
             "orderHash": "",
-            "marketId": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf", # noqa: mock
+            "marketId": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf",  # noqa: mock
             "active": "",
-            "subaccountId": "", # noqa: mock
+            "subaccountId": "",  # noqa: mock
             "executionType": "",
             "orderType": "LIMIT",
             "price": "0.616",
@@ -247,9 +247,9 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         })]
 
     def get_clob_ticker_response(
-            self,
-            trading_pair: str,
-            last_traded_price: Decimal
+        self,
+        trading_pair: str,
+        last_traded_price: Decimal
     ) -> Dict[str, Any]:
         market = (
             self.configure_gateway_get_clob_markets_response()
@@ -267,11 +267,11 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         }
 
     def configure_account_balances_response(
-            self,
-            base_total_balance: Decimal,
-            base_available_balance: Decimal,
-            quote_total_balance: Decimal,
-            quote_available_balance: Decimal
+        self,
+        base_total_balance: Decimal,
+        base_available_balance: Decimal,
+        quote_total_balance: Decimal,
+        quote_available_balance: Decimal
     ):
         self.gateway_instance_mock.get_balances.return_value = self.configure_gateway_get_balances_response()
 
@@ -279,12 +279,13 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         pass
 
     def configure_trade_fill_response(
-            self,
-            timestamp: float,
-            exchange_order_id: str,
-            price: Decimal,
-            size: Decimal,
-            fee: TradeFeeBase, trade_id: Union[str, int], is_taker: bool):
+        self,
+        timestamp: float,
+        exchange_order_id: str,
+        price: Decimal,
+        size: Decimal,
+        fee: TradeFeeBase, trade_id: Union[str, int], is_taker: bool
+    ):
         pass
 
     @staticmethod
@@ -294,17 +295,18 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             "timestamp": 1694561843115,
             "latency": 0.001,
             "markets": {
-                "KUJI-USK": { # noqa: mock
-                    "id": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf", # noqa: mock
-                    "name": "KUJI/USK", # noqa: mock
+                "KUJI-USK": {  # noqa: mock
+                    "id": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf",  # noqa: mock
+                    "name": "KUJI/USK",  # noqa: mock
                     "baseToken": {
-                        "id": "ukuji", # noqa: mock
-                        "name": "KUJI", # noqa: mock
-                        "symbol": "KUJI", # noqa: mock
+                        "id": "ukuji",  # noqa: mock
+                        "name": "KUJI",  # noqa: mock
+                        "symbol": "KUJI",  # noqa: mock
                         "decimals": 6
                     },
                     "quoteToken": {
-                        "id": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk", # noqa: mock
+                        "id": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk",
+                        # noqa: mock
                         "name": "USK",
                         "symbol": "USK",
                         "decimals": 6
@@ -321,15 +323,16 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
                     },
                     "deprecated": False,
                     "connectorMarket": {
-                        "address": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf", # noqa: mock
-                        "denoms": [ # noqa: mock
+                        "address": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf",  # noqa: mock
+                        "denoms": [  # noqa: mock
                             {
-                                "reference": "ukuji", # noqa: mock
+                                "reference": "ukuji",  # noqa: mock
                                 "decimals": 6,
-                                "symbol": "KUJI" # noqa: mock
+                                "symbol": "KUJI"  # noqa: mock
                             },
                             {
-                                "reference": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk", # noqa: mock
+                                "reference": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk",
+                                # noqa: mock
                                 "decimals": 6,
                                 "symbol": "USK"
                             }
@@ -338,9 +341,9 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
                             "decimal_places": 3
                         },
                         "decimalDelta": 0,
-                        "multiswap": True, # noqa: mock
-                        "pool": "kujira1g9xcvvh48jlckgzw8ajl6dkvhsuqgsx2g8u3v0a6fx69h7f8hffqaqu36t", # noqa: mock
-                        "calc": "kujira1e6fjnq7q20sh9cca76wdkfg69esha5zn53jjewrtjgm4nktk824stzyysu" # noqa: mock
+                        "multiswap": True,  # noqa: mock
+                        "pool": "kujira1g9xcvvh48jlckgzw8ajl6dkvhsuqgsx2g8u3v0a6fx69h7f8hffqaqu36t",  # noqa: mock
+                        "calc": "kujira1e6fjnq7q20sh9cca76wdkfg69esha5zn53jjewrtjgm4nktk824stzyysu"  # noqa: mock
                     }
                 }
             }
@@ -610,3 +613,15 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         actual = convert_hb_trading_pair_to_market_name("KUJI-USK")
 
         self.assertEqual(expected, actual)
+
+    def test_order_status_methods(self):
+        for item in KujiraOrderStatus:
+            if item == KujiraOrderStatus.UNKNOWN:
+                continue
+
+            hummingbot_status = KujiraOrderStatus.to_hummingbot(item)
+            kujira_status = KujiraOrderStatus.from_hummingbot(hummingbot_status)
+            kujira_status_from_name = KujiraOrderStatus.from_name(kujira_status.name)
+
+            self.assertEqual(item, kujira_status)
+            self.assertEqual(item, kujira_status_from_name)
