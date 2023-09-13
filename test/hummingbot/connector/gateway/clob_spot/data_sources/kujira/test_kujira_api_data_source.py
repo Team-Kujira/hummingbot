@@ -12,6 +12,7 @@ from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers i
 )
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.test_support.gateway_clob_api_data_source_test import AbstractGatewayCLOBAPIDataSourceTests
+from hummingbot.connector.trading_rule import TradingRule
 from hummingbot.connector.utils import combine_to_hb_trading_pair
 from hummingbot.core.data_type.common import OrderType, TradeType
 from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate
@@ -322,6 +323,10 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             taker_flat_fees=[],
         )
 
+    @property
+    def expected_min_price_increment(self):
+        return Decimal("0.001")
+
     def test_batch_order_cancel(self):
         super().test_batch_order_cancel()
 
@@ -413,7 +418,15 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         super().test_get_trading_fees()
 
     def test_get_trading_rules(self):
-        super().test_get_trading_rules()
+        trading_rules = self.async_run_with_timeout(coro=self.data_source.get_trading_rules())
+
+        self.assertEqual(1, len(trading_rules))
+        self.assertIn(self.trading_pair, trading_rules)
+
+        trading_rule: TradingRule = trading_rules[self.trading_pair]
+
+        self.assertEqual(self.trading_pair, trading_rule.trading_pair)
+        self.assertEqual(self.expected_min_price_increment, trading_rule.min_price_increment)
 
     def test_maximum_delay_between_requests_for_snapshot_events(self):
         super().test_maximum_delay_between_requests_for_snapshot_events()
