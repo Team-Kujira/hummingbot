@@ -10,14 +10,20 @@ from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers import (
     convert_market_name_to_hb_trading_pair,
 )
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_types import OrderStatus as KujiraOrderStatus
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.test_support.gateway_clob_api_data_source_test import AbstractGatewayCLOBAPIDataSourceTests
 from hummingbot.connector.trading_rule import TradingRule
 from hummingbot.connector.utils import combine_to_hb_trading_pair
 from hummingbot.core.data_type.common import OrderType, TradeType
-from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate
+from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate, TradeUpdate
 from hummingbot.core.data_type.order_book_message import OrderBookMessage
-from hummingbot.core.data_type.trade_fee import MakerTakerExchangeFeeRates, TradeFeeBase
+from hummingbot.core.data_type.trade_fee import (
+    DeductedFromReturnsTradeFee,
+    MakerTakerExchangeFeeRates,
+    TokenAmount,
+    TradeFeeBase,
+)
 from hummingbot.core.network_iterator import NetworkStatus
 
 
@@ -222,7 +228,7 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             "triggerPrice": "",
             "quantity": "0.24777",
             "filledQuantity": "",
-            "state": status,
+            "state": KujiraOrderStatus.from_hummingbot(status).name,
             "createdAt": timestamp,
             "updatedAt": "",
             "direction": "BUY"
@@ -370,6 +376,24 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
     def expected_quote_available_balance(self) -> Decimal:
         return Decimal("3.522325")
 
+    @property
+    def expected_fill_price(self) -> Decimal:
+        return Decimal("11")
+
+    @property
+    def expected_fill_size(self) -> Decimal:
+        return Decimal("3")
+
+    @property
+    def expected_fill_fee_amount(self) -> Decimal:
+        return Decimal("0.15")
+
+    @property
+    def expected_fill_fee(self) -> TradeFeeBase:
+        return DeductedFromReturnsTradeFee(
+            flat_fees=[TokenAmount(token=self.expected_fill_fee_token, amount=self.expected_fill_fee_amount)]
+        )
+
     def test_batch_order_cancel(self):
         super().test_batch_order_cancel()
 
@@ -412,7 +436,48 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         super().test_get_account_balances()
 
     def test_get_all_order_fills(self):
-        super().test_get_all_order_fills()
+        asyncio.get_event_loop().run_until_complete(
+            self.data_source._update_markets()
+        )
+        creation_transaction_hash = "0x7cb2eafc389349f86da901cdcbfd9119425a2ea84d61c17b6ded778b6fd2g81d"  # noqa: mock
+        in_flight_order = GatewayInFlightOrder(
+            initial_state=OrderState.PENDING_CREATE,
+            client_order_id=self.expected_sell_client_order_id,
+            trading_pair=self.trading_pair,
+            order_type=OrderType.LIMIT,
+            trade_type=TradeType.SELL,
+            creation_timestamp=self.initial_timestamp - 10,
+            price=self.expected_sell_order_price,
+            amount=self.expected_sell_order_size,
+            exchange_order_id=self.expected_sell_exchange_order_id,
+        )
+        self.data_source.gateway_order_tracker.active_orders[in_flight_order.client_order_id] = in_flight_order
+        self.enqueue_order_status_response(
+            timestamp=self.initial_timestamp + 1,
+            trading_pair=in_flight_order.trading_pair,
+            exchange_order_id=self.expected_buy_exchange_order_id,
+            client_order_id=in_flight_order.client_order_id,
+            status=OrderState.FILLED,
+        )
+
+        trade_updates: List[TradeUpdate] = self.async_run_with_timeout(
+            coro=self.data_source.get_all_order_fills(in_flight_order=in_flight_order),
+        )
+
+        self.assertEqual(1, len(trade_updates))
+
+        trade_update = trade_updates[0]
+
+        self.assertIsNotNone(trade_update.trade_id)
+        self.assertEqual(self.expected_sell_client_order_id, trade_update.client_order_id)
+        self.assertEqual(self.expected_sell_exchange_order_id, trade_update.exchange_order_id)
+        self.assertEqual(self.trading_pair, trade_update.trading_pair)
+        self.assertLess(float(0), trade_update.fill_timestamp)
+        self.assertEqual(self.expected_fill_price, trade_update.fill_price)
+        self.assertEqual(self.expected_fill_size, trade_update.fill_base_amount)
+        self.assertEqual(self.expected_fill_size * self.expected_fill_price, trade_update.fill_quote_amount)
+        self.assertEqual(self.expected_fill_fee, trade_update.fee)
+        self.assertTrue(trade_update.is_taker)
 
     def test_get_all_order_fills_no_fills(self):
         super().test_get_all_order_fills_no_fills()

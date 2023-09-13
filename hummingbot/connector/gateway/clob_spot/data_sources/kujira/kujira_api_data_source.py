@@ -628,7 +628,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
     async def get_all_order_fills(self, in_flight_order: GatewayInFlightOrder) -> List[TradeUpdate]:
         if in_flight_order.exchange_order_id:
-
             active_order = self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id)
 
             if active_order:
