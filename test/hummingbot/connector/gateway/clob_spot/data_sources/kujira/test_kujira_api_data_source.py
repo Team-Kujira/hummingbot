@@ -5,6 +5,9 @@ from unittest.mock import patch
 from _decimal import Decimal
 
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_source import KujiraAPIDataSource
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers import (
+    convert_market_name_to_hb_trading_pair,
+)
 from hummingbot.connector.test_support.gateway_clob_api_data_source_test import AbstractGatewayCLOBAPIDataSourceTests
 from hummingbot.connector.utils import combine_to_hb_trading_pair
 from hummingbot.core.data_type.common import TradeType
@@ -184,6 +187,33 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         )
         self.gateway_instance_mock.clob_place_order.return_value["id"] = "1"
 
+    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.get_clob_order_status_updates")
+    def configure_get_order_response(self, *_args):
+        self.data_source._gateway.get_clob_order_status_updates.return_value = {
+            "network": "mainnet",
+            "timestamp": 1694619386793,
+            "latency": 7.778,
+            "orders": [
+                {
+                    "id": "1370335",
+                    "orderHash": "",
+                    "marketId": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf", # noqa: mock
+                    "active": "",
+                    "subaccountId": "", # noqa: mock
+                    "executionType": "",
+                    "orderType": "LIMIT",
+                    "price": "0.616",
+                    "triggerPrice": "",
+                    "quantity": "0.24777",
+                    "filledQuantity": "",
+                    "state": "FILLED",
+                    "createdAt": "1694553828194861000",
+                    "updatedAt": "",
+                    "direction": "BUY"
+                }
+            ]
+        }
+
     @property
     def expected_buy_exchange_order_id(self) -> str:
         return "1"
@@ -208,15 +238,29 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
     def expected_base_decimals(self) -> int:
         return 6
 
-    def exchange_symbol_for_tokens(self, base_token: str, quote_token: str) -> str:
+    def exchange_symbol_for_tokens(
+            self,
+            base_token: str,
+            quote_token: str
+    ) -> str:
         return f"{base_token}/{quote_token}"
 
     def get_trading_pairs_info_response(self) -> List[Dict[str, Any]]:
-        pass
+        market = self.data_source._gateway.get_clob_markets.return_value
+        market_name = convert_market_name_to_hb_trading_pair(market.markets[0].name)
 
-    def get_order_status_response(self, timestamp: float, trading_pair: str, exchange_order_id: str,
-                                  client_order_id: str, status: OrderState) -> List[Dict[str, Any]]:
-        pass
+        return [{"market_name": market_name, "market": market}]
+
+    def get_order_status_response(
+            self,
+            timestamp: float,
+            trading_pair: str,
+            exchange_order_id: str,
+            client_order_id: str,
+            status: OrderState
+    ) -> List[Dict[str, Any]]:
+        orders = self.data_source._gateway.get_clob_order_status_updates.return_value
+        return [{"exchange_order_id": orders.orders[0].id, "order": orders[0]}]
 
     def get_clob_ticker_response(self, trading_pair: str, last_traded_price: Decimal) -> List[Dict[str, Any]]:
         pass
