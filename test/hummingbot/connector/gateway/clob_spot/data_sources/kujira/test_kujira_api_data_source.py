@@ -3,11 +3,13 @@ from typing import Any, Dict, List, Union
 from unittest.mock import patch
 
 from _decimal import Decimal
+from dotmap import DotMap
 
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_source import KujiraAPIDataSource
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers import (
     convert_market_name_to_hb_trading_pair,
 )
+from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.test_support.gateway_clob_api_data_source_test import AbstractGatewayCLOBAPIDataSourceTests
 from hummingbot.connector.utils import combine_to_hb_trading_pair
 from hummingbot.core.data_type.common import TradeType
@@ -53,6 +55,9 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         )
 
         return data_source
+
+    def test_batch_order_create(self):
+        super().test_batch_order_create()
 
     @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.ping_gateway")
     def test_gateway_ping_gateway(self, *_args):
@@ -102,71 +107,15 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
 
         self.assertEqual(expected, result)
 
-    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.get_clob_markets")
-    def configure_get_market(self, *_args):
-        self.data_source._gateway.get_clob_markets.return_value = \
-            {
-                "network": "mainnet",
-                "timestamp": 1694561843115,
-                "latency": 0.001,
-                "markets": {
-                    "KUJI-USK": {
-                        "id": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf",
-                        "name": "KUJI/USK",
-                        "baseToken": {
-                            "id": "ukuji",
-                            "name": "KUJI",
-                            "symbol": "KUJI",
-                            "decimals": 6
-                        },
-                        "quoteToken": {
-                            "id": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk",
-                            "name": "USK",
-                            "symbol": "USK",
-                            "decimals": 6
-                        },
-                        "precision": 3,
-                        "minimumOrderSize": "0.001",
-                        "minimumPriceIncrement": "0.001",
-                        "minimumBaseAmountIncrement": "0.001",
-                        "minimumQuoteAmountIncrement": "0.001",
-                        "fees": {
-                            "maker": "0.075",
-                            "taker": "0.15",
-                            "serviceProvider": "0"
-                        },
-                        "deprecated": False,
-                        "connectorMarket": {
-                            "address": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf",
-                            "denoms": [
-                                {
-                                    "reference": "ukuji",
-                                    "decimals": 6,
-                                    "symbol": "KUJI"
-                                },
-                                {
-                                    "reference": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk",
-                                    "decimals": 6,
-                                    "symbol": "USK"
-                                }
-                            ],
-                            "precision": {
-                                "decimal_places": 3
-                            },
-                            "decimalDelta": 0,
-                            "multiswap": True,
-                            "pool": "kujira1g9xcvvh48jlckgzw8ajl6dkvhsuqgsx2g8u3v0a6fx69h7f8hffqaqu36t",
-                            "calc": "kujira1e6fjnq7q20sh9cca76wdkfg69esha5zn53jjewrtjgm4nktk824stzyysu"
-                        }
-                    }
-                }
-            }
-
     @staticmethod
     def configure_asyncio_sleep():
         async def sleep(*_args, **_kwargs):
             pass
         patch.object(asyncio, "sleep", new_callable=sleep)
+
+    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.get_clob_markets")
+    def configure_get_market(self, *_args):
+        self.data_source._gateway.get_clob_markets.return_value = self.configure_get_market_response()
 
     def configure_place_order_response(
         self,
@@ -186,6 +135,19 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             size,
         )
         self.gateway_instance_mock.clob_place_order.return_value["id"] = "1"
+
+    def configure_batch_order_create_response(
+        self,
+        timestamp: float,
+        transaction_hash: str,
+        created_orders: List[GatewayInFlightOrder],
+    ):
+        super().configure_batch_order_create_response(
+            timestamp=self.initial_timestamp,
+            transaction_hash=self.expected_transaction_hash,
+            created_orders=created_orders,
+        )
+        self.gateway_instance_mock.clob_batch_order_modify.return_value["ids"] = ["1", "2"]
 
     @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.get_clob_order_status_updates")
     def configure_get_order_response(self, *_args):
@@ -246,8 +208,11 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         return f"{base_token}/{quote_token}"
 
     def get_trading_pairs_info_response(self) -> List[Dict[str, Any]]:
-        market = self.data_source._gateway.get_clob_markets.return_value
-        market_name = convert_market_name_to_hb_trading_pair(market.markets[0].name)
+        response = self.configure_get_market_response()
+
+        market = response.markets[list(response.markets.keys())[0]]
+
+        market_name = convert_market_name_to_hb_trading_pair(market.name)
 
         return [{"market_name": market_name, "market": market}]
 
@@ -275,3 +240,61 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
     def configure_trade_fill_response(self, timestamp: float, exchange_order_id: str, price: Decimal, size: Decimal,
                                       fee: TradeFeeBase, trade_id: Union[str, int], is_taker: bool):
         pass
+
+    def configure_get_market_response(self):
+        return DotMap({
+            "network": "mainnet",
+            "timestamp": 1694561843115,
+            "latency": 0.001,
+            "markets": {
+                "KUJI-USK": {
+                    "id": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf",
+                    "name": "KUJI/USK",
+                    "baseToken": {
+                        "id": "ukuji",
+                        "name": "KUJI",
+                        "symbol": "KUJI",
+                        "decimals": 6
+                    },
+                    "quoteToken": {
+                        "id": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk",
+                        "name": "USK",
+                        "symbol": "USK",
+                        "decimals": 6
+                    },
+                    "precision": 3,
+                    "minimumOrderSize": "0.001",
+                    "minimumPriceIncrement": "0.001",
+                    "minimumBaseAmountIncrement": "0.001",
+                    "minimumQuoteAmountIncrement": "0.001",
+                    "fees": {
+                        "maker": "0.075",
+                        "taker": "0.15",
+                        "serviceProvider": "0"
+                    },
+                    "deprecated": False,
+                    "connectorMarket": {
+                        "address": "kujira193dzcmy7lwuj4eda3zpwwt9ejal00xva0vawcvhgsyyp5cfh6jyq66wfrf",
+                        "denoms": [
+                            {
+                                "reference": "ukuji",
+                                "decimals": 6,
+                                "symbol": "KUJI"
+                            },
+                            {
+                                "reference": "factory/kujira1qk00h5atutpsv900x202pxx42npjr9thg58dnqpa72f2p7m2luase444a7/uusk",
+                                "decimals": 6,
+                                "symbol": "USK"
+                            }
+                        ],
+                        "precision": {
+                            "decimal_places": 3
+                        },
+                        "decimalDelta": 0,
+                        "multiswap": True,
+                        "pool": "kujira1g9xcvvh48jlckgzw8ajl6dkvhsuqgsx2g8u3v0a6fx69h7f8hffqaqu36t",
+                        "calc": "kujira1e6fjnq7q20sh9cca76wdkfg69esha5zn53jjewrtjgm4nktk824stzyysu"
+                    }
+                }
+            }
+        }, _dynamic=False)
