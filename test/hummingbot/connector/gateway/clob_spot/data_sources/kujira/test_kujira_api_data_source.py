@@ -338,7 +338,24 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         super().test_cancel_order()
 
     def test_cancel_order_transaction_fails(self):
-        super().test_cancel_order_transaction_fails()
+        order = GatewayInFlightOrder(
+            client_order_id=self.expected_buy_client_order_id,
+            trading_pair=self.trading_pair,
+            order_type=OrderType.LIMIT,
+            trade_type=TradeType.BUY,
+            price=self.expected_buy_order_price,
+            amount=self.expected_buy_order_size,
+            creation_timestamp=self.initial_timestamp,
+            exchange_order_id=self.expected_buy_exchange_order_id,
+            creation_transaction_hash="someCreationHash",
+        )
+        self.data_source.gateway_order_tracker.start_tracking_order(order=order)
+        self.configure_cancel_order_failure_response()
+
+        result = self.async_run_with_timeout(coro=self.data_source.cancel_order(order=order))
+
+        self.assertEqual(False, result[0])
+        self.assertEqual(DotMap({}), result[1])
 
     def test_check_network_status(self):
         super().test_check_network_status()
