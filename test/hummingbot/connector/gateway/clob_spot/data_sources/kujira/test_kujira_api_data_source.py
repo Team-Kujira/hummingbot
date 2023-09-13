@@ -232,8 +232,21 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             self,
             trading_pair: str,
             last_traded_price: Decimal
-    ) -> List[Dict[str, Any]]:
-        pass
+    ) -> Dict[str, Any]:
+        market = (
+            self.configure_gateway_get_clob_markets_response()
+        ).markets[trading_pair]
+
+        return {
+            "KUJI-USK": {  # noqa: mock
+                "market": market,
+                "ticker": {
+                    "price": "0.641"
+                },
+                "price": "0.641",
+                "timestamp": 1694631135095
+            }
+        }
 
     def configure_account_balances_response(
             self,
@@ -328,6 +341,10 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
     def expected_min_price_increment(self):
         return Decimal("0.001")
 
+    @property
+    def expected_last_traded_price(self) -> Decimal:
+        return Decimal("0.641")
+
     def test_batch_order_cancel(self):
         super().test_batch_order_cancel()
 
@@ -376,7 +393,14 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         super().test_get_all_order_fills_no_fills()
 
     def test_get_last_traded_price(self):
-        super().test_get_last_traded_price()
+        self.configure_last_traded_price(
+            trading_pair=self.trading_pair, last_traded_price=self.expected_last_traded_price
+        )
+        last_trade_price = self.async_run_with_timeout(
+            coro=self.data_source.get_last_traded_price(trading_pair=self.trading_pair)
+        )
+
+        self.assertEqual(self.expected_last_traded_price, last_trade_price)
 
     def test_get_order_book_snapshot(self):
         self.configure_orderbook_snapshot(
