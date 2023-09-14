@@ -536,6 +536,7 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             creation_transaction_hash=creation_transaction_hash,
             exchange_order_id=self.expected_buy_exchange_order_id,
         )
+        self.data_source.gateway_order_tracker.active_orders[in_flight_order.client_order_id] = in_flight_order
         self.enqueue_order_status_response(
             timestamp=self.initial_timestamp + 1,
             trading_pair=in_flight_order.trading_pair,
@@ -553,6 +554,63 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         self.assertEqual(OrderState.PENDING_CREATE, status_update.new_state)
         self.assertEqual(in_flight_order.client_order_id, status_update.client_order_id)
         self.assertEqual(self.expected_buy_exchange_order_id, status_update.exchange_order_id)
+
+    def test_get_order_status_update_with_no_update(self):
+        creation_transaction_hash = "0x7cb2eafc389349f86da901cdcbfd9119425a2ea84d61c17b6ded778b6fd2g81d"  # noqa: mock
+        in_flight_order = GatewayInFlightOrder(
+            client_order_id=self.expected_buy_client_order_id,
+            trading_pair=self.trading_pair,
+            order_type=OrderType.LIMIT,
+            trade_type=TradeType.BUY,
+            creation_timestamp=self.initial_timestamp,
+            price=self.expected_buy_order_price,
+            amount=self.expected_buy_order_size,
+            creation_transaction_hash=creation_transaction_hash,
+            exchange_order_id=self.expected_buy_exchange_order_id,
+        )
+        self.enqueue_order_status_response(
+            timestamp=self.initial_timestamp + 1,
+            trading_pair=in_flight_order.trading_pair,
+            exchange_order_id=self.expected_buy_exchange_order_id,
+            client_order_id=in_flight_order.client_order_id,
+            status=OrderState.PENDING_CREATE,
+        )
+
+        status_update: OrderUpdate = self.async_run_with_timeout(
+            coro=self.data_source.get_order_status_update(in_flight_order=in_flight_order)
+        )
+
+        self.assertEqual(self.trading_pair, status_update.trading_pair)
+        self.assertLess(self.initial_timestamp, status_update.update_timestamp)
+        self.assertEqual(OrderState.PENDING_CREATE, status_update.new_state)
+        self.assertEqual(in_flight_order.client_order_id, status_update.client_order_id)
+        self.assertEqual(self.expected_buy_exchange_order_id, status_update.exchange_order_id)
+
+    def test_update_order_status(self):
+        creation_transaction_hash = "0x7cb2eafc389349f86da901cdcbfd9119425a2ea84d61c17b6ded778b6fd2g81d"  # noqa: mock
+        in_flight_order = GatewayInFlightOrder(
+            client_order_id=self.expected_buy_client_order_id,
+            trading_pair=self.trading_pair,
+            order_type=OrderType.LIMIT,
+            trade_type=TradeType.BUY,
+            creation_timestamp=self.initial_timestamp,
+            price=self.expected_buy_order_price,
+            amount=self.expected_buy_order_size,
+            creation_transaction_hash=creation_transaction_hash,
+            exchange_order_id=self.expected_buy_exchange_order_id,
+        )
+        self.data_source.gateway_order_tracker.active_orders[in_flight_order.client_order_id] = in_flight_order
+        self.enqueue_order_status_response(
+            timestamp=self.initial_timestamp + 1,
+            trading_pair=in_flight_order.trading_pair,
+            exchange_order_id=self.expected_buy_exchange_order_id,
+            client_order_id=in_flight_order.client_order_id,
+            status=OrderState.PENDING_CREATE,
+        )
+
+        self.async_run_with_timeout(
+            coro=self.data_source._update_order_status()
+        )
 
     def test_get_symbol_map(self):
         symbol_map = self.async_run_with_timeout(coro=self.data_source.get_symbol_map())
