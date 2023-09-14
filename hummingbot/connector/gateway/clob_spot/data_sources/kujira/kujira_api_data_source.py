@@ -212,7 +212,8 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         candidate_orders = [in_flight_order]
         client_ids = []
         for order_to_create in orders_to_create:
-            order_to_create.client_order_id = generate_hash(order_to_create)
+            if not order_to_create.client_order_id:
+                order_to_create.client_order_id = generate_hash(order_to_create)
             client_ids.append(order_to_create.client_order_id)
 
             candidate_order = in_flight_order.InFlightOrder(
@@ -538,6 +539,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         hb_balances = {}
         for token, balance in balances.items():
+            balance = Decimal(balance)
             hb_balances[token] = DotMap({}, _dynamic=False)
             hb_balances[token]["total_balance"] = balance
             hb_balances[token]["available_balance"] = balance
@@ -626,7 +628,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
     async def get_all_order_fills(self, in_flight_order: GatewayInFlightOrder) -> List[TradeUpdate]:
         if in_flight_order.exchange_order_id:
-
             active_order = self.gateway_order_tracker.active_orders.get(in_flight_order.client_order_id)
 
             if active_order:
@@ -725,19 +726,20 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         # self.logger().debug("check_network_status: start")
 
         try:
-            await self._gateway_ping_gateway()
+            status = await self._gateway_ping_gateway()
 
-            output = NetworkStatus.CONNECTED
+            if status:
+                return NetworkStatus.CONNECTED
+            else:
+                return NetworkStatus.NOT_CONNECTED
         except asyncio.CancelledError:
             raise
         except Exception as exception:
             self.logger().error(exception)
 
-            output = NetworkStatus.NOT_CONNECTED
+            return NetworkStatus.NOT_CONNECTED
 
         # self.logger().debug("check_network_status: end")
-
-        return output
 
     @property
     def is_cancel_request_in_exchange_synchronous(self) -> bool:
@@ -956,7 +958,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
             await asyncio.sleep(UPDATE_ORDER_STATUS_INTERVAL)
 
     @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)
-    async def _gateway_ping_gateway(self, request):
+    async def _gateway_ping_gateway(self, _request=None):
         return await self._gateway.ping_gateway()
 
     @automatic_retry_with_timeout(retries=NUMBER_OF_RETRIES, delay=DELAY_BETWEEN_RETRIES, timeout=TIMEOUT)

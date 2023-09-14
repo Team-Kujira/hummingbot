@@ -15,6 +15,7 @@ native_tokens = {
     "near": "NEAR",
     "injective": "INJ",
     "xdc": "XDC",
+    "tezos": "XTZ",
     "kujira": "KUJI"
 }
 
