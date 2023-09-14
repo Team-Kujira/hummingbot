@@ -1,5 +1,4 @@
 import asyncio
-import importlib
 from typing import Any, Dict, List, Union
 from unittest.mock import patch
 
@@ -7,6 +6,7 @@ from _decimal import Decimal
 from bidict import bidict
 from dotmap import DotMap
 
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_source import KujiraAPIDataSource
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers import (
     convert_hb_trading_pair_to_market_name,
     convert_market_name_to_hb_trading_pair,
@@ -33,26 +33,6 @@ from hummingbot.core.data_type.trade_fee import (
 from hummingbot.core.network_iterator import NetworkStatus
 
 
-def mock_automatic_retry_with_timeout(retries=0, delay=0, timeout=None):
-    def decorator(func):
-        return func
-
-    return decorator
-
-
-kujira_helpers_module = importlib.import_module("hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers")
-kujira_helpers_module.automatic_retry_with_timeout = mock_automatic_retry_with_timeout
-
-# kujira_constants_module = importlib.import_module("hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_constants")
-# kujira_constants_module.NUMBER_OF_RETRIES = 0
-# kujira_constants_module.DELAY_BETWEEN_RETRIES = 0
-# kujira_constants_module.TIMEOUT = None
-
-from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_source import (  # noqa: E402
-    KujiraAPIDataSource,
-)
-
-
 class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBAPIDataSourceTests):
 
     @classmethod
@@ -64,17 +44,101 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
         cls.base = "KUJI"  # noqa: mock
         cls.quote = "USK"
         cls.trading_pair = combine_to_hb_trading_pair(base=cls.base, quote=cls.quote)
-        cls.owner_address = "kujira1yrensec9gzl7y3t3duz44efzgwj2qv6gwayrn7"  # noqa: mock
+        cls.owner_address = "kujira1yrensec9gzl7y3t3duz44efzgwj21b2arayr1w"  # noqa: mock
 
     def setUp(self) -> None:
         super().setUp()
 
         self.configure_asyncio_sleep()
         self.data_source._gateway = self.gateway_instance_mock
+        self.configure_async_functions_with_decorator()
         self.configure_get_market()
 
     def tearDown(self) -> None:
         super().tearDown()
+
+    @property
+    def expected_buy_client_order_id(self) -> str:
+        return "03719e91d18db65ec3bf5554d678e5b4"
+
+    @property
+    def expected_sell_client_order_id(self) -> str:
+        return "02719e91d18db65ec3bf5554d678e5b2"
+
+    @property
+    def expected_buy_exchange_order_id(self) -> str:
+        return "1"
+
+    @property
+    def expected_sell_exchange_order_id(self) -> str:
+        return "2"
+
+    @property
+    def exchange_base(self) -> str:
+        return self.base
+
+    @property
+    def exchange_quote(self) -> str:
+        return self.quote
+
+    @property
+    def expected_quote_decimals(self) -> int:
+        return 6
+
+    @property
+    def expected_base_decimals(self) -> int:
+        return 6
+
+    @property
+    def expected_maker_taker_fee_rates(self) -> MakerTakerExchangeFeeRates:
+        return MakerTakerExchangeFeeRates(
+            maker=Decimal("0.075"),
+            taker=Decimal("0.15"),
+            maker_flat_fees=[],
+            taker_flat_fees=[],
+        )
+
+    @property
+    def expected_min_price_increment(self):
+        return Decimal("0.001")
+
+    @property
+    def expected_last_traded_price(self) -> Decimal:
+        return Decimal("0.641")
+
+    @property
+    def expected_base_total_balance(self) -> Decimal:
+        return Decimal("6.355439")
+
+    @property
+    def expected_base_available_balance(self) -> Decimal:
+        return Decimal("6.355439")
+
+    @property
+    def expected_quote_total_balance(self) -> Decimal:
+        return Decimal("3.522325")
+
+    @property
+    def expected_quote_available_balance(self) -> Decimal:
+        return Decimal("3.522325")
+
+    @property
+    def expected_fill_price(self) -> Decimal:
+        return Decimal("11")
+
+    @property
+    def expected_fill_size(self) -> Decimal:
+        return Decimal("3")
+
+    @property
+    def expected_fill_fee_amount(self) -> Decimal:
+        return Decimal("0.15")
+
+    @property
+    def expected_fill_fee(self) -> TradeFeeBase:
+        return DeductedFromReturnsTradeFee(
+            flat_fees=[TokenAmount(token=self.expected_fill_fee_token, amount=self.expected_fill_fee_amount)]
+        )
 
     def build_api_data_source(self, with_api_key: bool = True) -> Any:
         connector_spec = {
@@ -91,61 +155,29 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
 
         return data_source
 
-    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.ping_gateway")
-    def test_gateway_ping_gateway(self, *_args):
-        self.data_source._gateway.ping_gateway.return_value = True
-
-        result = self.async_run_with_timeout(
-            coro=self.data_source._gateway_ping_gateway()
-        )
-
-        expected = True
-
-        self.assertEqual(expected, result)
-
-    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.ping_gateway")
-    def test_check_network_status_with_gateway_connected(self, *_args):
-        self.data_source._gateway.ping_gateway.return_value = True
-
-        result = self.async_run_with_timeout(
-            coro=self.data_source.check_network_status()
-        )
-
-        expected = NetworkStatus.CONNECTED
-
-        self.assertEqual(expected, result)
-
-    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.ping_gateway")
-    def test_check_network_status_with_gateway_not_connected(self, *_args):
-        self.data_source._gateway.ping_gateway.return_value = False
-
-        result = self.async_run_with_timeout(
-            coro=self.data_source.check_network_status()
-        )
-
-        expected = NetworkStatus.NOT_CONNECTED
-
-        self.assertEqual(expected, result)
-
-    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.ping_gateway")
-    def test_check_network_status_with_gateway_exception(self, *_args):
-        self.configure_asyncio_sleep()
-        self.data_source._gateway.ping_gateway.side_effect = RuntimeError("Unknown error")
-
-        result = self.async_run_with_timeout(
-            coro=self.data_source.check_network_status()
-        )
-
-        expected = NetworkStatus.NOT_CONNECTED
-
-        self.assertEqual(expected, result)
-
     @staticmethod
     def configure_asyncio_sleep():
         async def sleep(*_args, **_kwargs):
             pass
 
         patch.object(asyncio, "sleep", new_callable=sleep)
+
+    def configure_async_functions_with_decorator(self):
+        def wrapper(object, function):
+            async def closure(*args, **kwargs):
+                return await function(object, *args, **kwargs)
+
+            return closure
+
+        self.data_source._gateway_ping_gateway = wrapper(self.data_source, self.data_source._gateway_ping_gateway.original)
+        self.data_source._gateway_get_clob_markets = wrapper(self.data_source, self.data_source._gateway_get_clob_markets.original)
+        self.data_source._gateway_get_clob_orderbook_snapshot = wrapper(self.data_source, self.data_source._gateway_get_clob_orderbook_snapshot.original)
+        self.data_source._gateway_get_clob_ticker = wrapper(self.data_source, self.data_source._gateway_get_clob_ticker.original)
+        self.data_source._gateway_get_balances = wrapper(self.data_source, self.data_source._gateway_get_balances.original)
+        self.data_source._gateway_clob_place_order = wrapper(self.data_source, self.data_source._gateway_clob_place_order.original)
+        self.data_source._gateway_clob_cancel_order = wrapper(self.data_source, self.data_source._gateway_clob_cancel_order.original)
+        self.data_source._gateway_clob_batch_order_modify = wrapper(self.data_source, self.data_source._gateway_clob_batch_order_modify.original)
+        self.data_source._gateway_get_clob_order_status_updates = wrapper(self.data_source, self.data_source._gateway_get_clob_order_status_updates.original)
 
     @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.get_clob_markets")
     def configure_get_market(self, *_args):
@@ -186,45 +218,6 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             created_orders=created_orders,
         )
         self.gateway_instance_mock.clob_batch_order_modify.return_value["ids"] = ["1", "2"]
-
-    @property
-    def expected_buy_client_order_id(self) -> str:
-        return "03719e91d18db65ec3bf5554d678e5b4"
-
-    @property
-    def expected_sell_client_order_id(self) -> str:
-        return "02719e91d18db65ec3bf5554d678e5b2"
-
-    @property
-    def expected_buy_exchange_order_id(self) -> str:
-        return "1"
-
-    @property
-    def expected_sell_exchange_order_id(self) -> str:
-        return "2"
-
-    @property
-    def exchange_base(self) -> str:
-        return self.base
-
-    @property
-    def exchange_quote(self) -> str:
-        return self.quote
-
-    @property
-    def expected_quote_decimals(self) -> int:
-        return 6
-
-    @property
-    def expected_base_decimals(self) -> int:
-        return 6
-
-    def exchange_symbol_for_tokens(
-        self,
-        base_token: str,
-        quote_token: str
-    ) -> str:
-        return f"{base_token}-{quote_token}"
 
     def get_trading_pairs_info_response(self) -> List[Dict[str, Any]]:
         response = self.configure_gateway_get_clob_markets_response()
@@ -373,56 +366,61 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
             }
         }
 
-    @property
-    def expected_maker_taker_fee_rates(self) -> MakerTakerExchangeFeeRates:
-        return MakerTakerExchangeFeeRates(
-            maker=Decimal("0.075"),
-            taker=Decimal("0.15"),
-            maker_flat_fees=[],
-            taker_flat_fees=[],
+    def exchange_symbol_for_tokens(
+        self,
+        base_token: str,
+        quote_token: str
+    ) -> str:
+        return f"{base_token}-{quote_token}"
+
+    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.ping_gateway")
+    def test_gateway_ping_gateway(self, *_args):
+        self.data_source._gateway.ping_gateway.return_value = True
+
+        result = self.async_run_with_timeout(
+            coro=self.data_source._gateway_ping_gateway()
         )
 
-    @property
-    def expected_min_price_increment(self):
-        return Decimal("0.001")
+        expected = True
 
-    @property
-    def expected_last_traded_price(self) -> Decimal:
-        return Decimal("0.641")
+        self.assertEqual(expected, result)
 
-    @property
-    def expected_base_total_balance(self) -> Decimal:
-        return Decimal("6.355439")
+    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.ping_gateway")
+    def test_check_network_status_with_gateway_connected(self, *_args):
+        self.data_source._gateway.ping_gateway.return_value = True
 
-    @property
-    def expected_base_available_balance(self) -> Decimal:
-        return Decimal("6.355439")
-
-    @property
-    def expected_quote_total_balance(self) -> Decimal:
-        return Decimal("3.522325")
-
-    @property
-    def expected_quote_available_balance(self) -> Decimal:
-        return Decimal("3.522325")
-
-    @property
-    def expected_fill_price(self) -> Decimal:
-        return Decimal("11")
-
-    @property
-    def expected_fill_size(self) -> Decimal:
-        return Decimal("3")
-
-    @property
-    def expected_fill_fee_amount(self) -> Decimal:
-        return Decimal("0.15")
-
-    @property
-    def expected_fill_fee(self) -> TradeFeeBase:
-        return DeductedFromReturnsTradeFee(
-            flat_fees=[TokenAmount(token=self.expected_fill_fee_token, amount=self.expected_fill_fee_amount)]
+        result = self.async_run_with_timeout(
+            coro=self.data_source.check_network_status()
         )
+
+        expected = NetworkStatus.CONNECTED
+
+        self.assertEqual(expected, result)
+
+    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.ping_gateway")
+    def test_check_network_status_with_gateway_not_connected(self, *_args):
+        self.data_source._gateway.ping_gateway.return_value = False
+
+        result = self.async_run_with_timeout(
+            coro=self.data_source.check_network_status()
+        )
+
+        expected = NetworkStatus.NOT_CONNECTED
+
+        self.assertEqual(expected, result)
+
+    @patch("hummingbot.core.gateway.gateway_http_client.GatewayHttpClient.ping_gateway")
+    def test_check_network_status_with_gateway_exception(self, *_args):
+        self.configure_asyncio_sleep()
+        self.data_source._gateway.ping_gateway.side_effect = RuntimeError("Unknown error")
+
+        result = self.async_run_with_timeout(
+            coro=self.data_source.check_network_status()
+        )
+
+        expected = NetworkStatus.NOT_CONNECTED
+
+        self.assertEqual(expected, result)
 
     def test_batch_order_cancel(self):
         super().test_batch_order_cancel()
