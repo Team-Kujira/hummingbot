@@ -12,7 +12,11 @@ from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers i
     convert_market_name_to_hb_trading_pair,
     generate_hash,
 )
-from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_types import OrderStatus as KujiraOrderStatus
+from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_types import (
+    OrderSide as KujiraOrderSide,
+    OrderStatus as KujiraOrderStatus,
+    OrderType as KujiraOrderType,
+)
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.connector.test_support.gateway_clob_api_data_source_test import AbstractGatewayCLOBAPIDataSourceTests
 from hummingbot.connector.trading_rule import TradingRule
@@ -683,3 +687,27 @@ class KujiraAPIDataSourceTest(AbstractGatewayCLOBAPIDataSourceTests.GatewayCLOBA
 
             self.assertEqual(item, kujira_status)
             self.assertEqual(item, kujira_status_from_name)
+
+    def test_order_sides(self):
+        for item in KujiraOrderSide:
+            hummingbot_side = KujiraOrderSide.to_hummingbot(item)
+            kujira_side = KujiraOrderSide.from_hummingbot(hummingbot_side)
+            kujira_side_from_name = KujiraOrderSide.from_name(kujira_side.name)
+
+            self.assertEqual(item, kujira_side)
+            self.assertEqual(item, kujira_side_from_name)
+
+    def test_order_types(self):
+        for item in KujiraOrderType:
+            if item != KujiraOrderType.MARKET:
+                hummingbot_type = KujiraOrderType.to_hummingbot(item)
+                kujira_type = KujiraOrderType.from_hummingbot(hummingbot_type)
+                kujira_type_from_name = KujiraOrderType.from_name(kujira_type.name)
+
+                self.assertEqual(item, kujira_type)
+                self.assertEqual(item, kujira_type_from_name)
+            else:
+                with self.assertRaises(ValueError) as context:
+                    KujiraOrderType.to_hummingbot(item)
+
+                self.assertEqual(str(context.exception), 'Unrecognized order type "OrderType.MARKET".')
