@@ -32,10 +32,21 @@ from hummingbot.core.data_type.trade_fee import (
 )
 from hummingbot.core.network_iterator import NetworkStatus
 
-module_3 = importlib.import_module("hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_constants")
-module_3.NUMBER_OF_RETRIES = 0
-module_3.DELAY_BETWEEN_RETRIES = 0
-module_3.TIMEOUT = None
+
+def mock_automatic_retry_with_timeout(retries=0, delay=0, timeout=None):
+    def decorator(func):
+        return func
+
+    return decorator
+
+
+kujira_helpers_module = importlib.import_module("hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_helpers")
+kujira_helpers_module.automatic_retry_with_timeout = mock_automatic_retry_with_timeout
+
+# kujira_constants_module = importlib.import_module("hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_constants")
+# kujira_constants_module.NUMBER_OF_RETRIES = 0
+# kujira_constants_module.DELAY_BETWEEN_RETRIES = 0
+# kujira_constants_module.TIMEOUT = None
 
 from hummingbot.connector.gateway.clob_spot.data_sources.kujira.kujira_api_data_source import (  # noqa: E402
     KujiraAPIDataSource,
