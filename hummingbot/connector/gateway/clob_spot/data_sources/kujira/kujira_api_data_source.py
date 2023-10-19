@@ -517,17 +517,34 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
     async def get_account_balances(self) -> Dict[str, Dict[str, Decimal]]:
         self.logger().debug("get_account_balances: start")
 
-        request = {
-            "chain": self._chain,
-            "network": self._network,
-            "address": self._owner_address,
-            "connector": self._connector,
-        }
+        if not self._trading_pairs and self._trading_pair:
+            self._trading_pairs = self._trading_pair
 
-        if self._trading_pair:
-            request["token_symbols"] = [self._trading_pair.split("-")[0], self._trading_pair.split("-")[1], KUJIRA_NATIVE_TOKEN]
+        if self._trading_pairs:
+            token_symbols = []
+
+            for trading_pair in self._trading_pairs:
+                symbols = trading_pair.split("-")[0], trading_pair.split("-")[1]
+                for symbol in symbols:
+                    token_symbols.append(symbol)
+
+            token_symbols.append(KUJIRA_NATIVE_TOKEN.symbol)
+
+            request = {
+                "chain": self._chain,
+                "network": self._network,
+                "address": self._owner_address,
+                "connector": self._connector,
+                "token_symbols": list(set(token_symbols))
+            }
         else:
-            request["token_symbols"] = []
+            request = {
+                "chain": self._chain,
+                "network": self._network,
+                "address": self._owner_address,
+                "connector": self._connector,
+                "token_symbols": []
+            }
 
         # self.logger().debug(f"""get_balances request:\n "{self._dump(request)}".""")
 
@@ -763,35 +780,57 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
     async def _update_markets(self):
         self.logger().debug("_update_markets: start")
 
-        request = {
-            "connector": self._connector,
-            "chain": self._chain,
-            "network": self._network,
-        }
+        self._markets_info.clear()
 
-        if self._trading_pair:
-            request["trading_pair"] = self._trading_pair
+        all_markets_map = DotMap()
 
-        self.logger().debug(f"""get_clob_markets request:\n "{self._dump(request)}".""")
+        if not self._trading_pairs and self._trading_pair:
+            self._trading_pairs = self._trading_pair
 
-        response = await self._gateway_get_clob_markets(request)
+        if self._trading_pairs:
+            for trading_pair in self._trading_pairs:
 
-        self.logger().debug(f"""get_clob_markets response:\n "{self._dump(response)}".""")
+                request = {
+                    "connector": self._connector,
+                    "chain": self._chain,
+                    "network": self._network,
+                }
 
-        if 'trading_pair' in request or self._trading_pair:
-            markets = DotMap(response, _dynamic=False).markets
-            self._markets = markets[request['trading_pair']]
-            self._market = self._markets
-            self._markets_info.clear()
-            self._market["hb_trading_pair"] = convert_market_name_to_hb_trading_pair(self._market.name)
-            self._markets_info[self._market["hb_trading_pair"]] = self._market
+                if trading_pair:
+                    request["trading_pair"] = trading_pair
+
+                self.logger().debug(f"""get_clob_markets request:\n "{self._dump(request)}".""")
+
+                response = await self._gateway_get_clob_markets(request)
+
+                self.logger().debug(f"""get_clob_markets response:\n "{self._dump(response)}".""")
+
+                if 'trading_pair' in request or trading_pair:
+                    market = DotMap(response, _dynamic=False).markets
+                    self._market = market[request['trading_pair']]
+                    all_markets_map[request['trading_pair'] or trading_pair] = self._market
+                    self._market["hb_trading_pair"] = convert_market_name_to_hb_trading_pair(self._market.name)
+                    self._markets_info[self._market["hb_trading_pair"]] = self._market
         else:
+            request = {
+                "connector": self._connector,
+                "chain": self._chain,
+                "network": self._network,
+            }
+
+            self.logger().debug(f"""get_clob_markets request:\n "{self._dump(request)}".""")
+
+            response = await self._gateway_get_clob_markets(request)
+
+            self.logger().debug(f"""get_clob_markets response:\n "{self._dump(response)}".""")
+
             self._markets = DotMap(response, _dynamic=False).markets
 
-            self._markets_info.clear()
             for market in self._markets.values():
                 market["hb_trading_pair"] = convert_market_name_to_hb_trading_pair(market.name)
                 self._markets_info[market["hb_trading_pair"]] = market
+
+        self._markets = all_markets_map
 
         self.logger().debug("_update_markets: end")
 
