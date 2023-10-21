@@ -43,7 +43,7 @@ class ScriptStrategyBase(StrategyPyBase):
         self.ready_to_trade: bool = False
         self.add_markets(list(connectors.values()))
 
-    def tick(self, timestamp: float):
+    async def tick(self, timestamp: float):
         """
         Clock tick entry point, is run every second (on normal tick setting).
         Checks if all connectors are ready, if so the strategy is ready to trade.
@@ -57,9 +57,9 @@ class ScriptStrategyBase(StrategyPyBase):
                     self.logger().warning(f"{con.name} is not ready. Please wait...")
                 return
         else:
-            self.on_tick()
+            await self.on_tick()
 
-    def on_tick(self):
+    async def on_tick(self):
         """
         An event which is called on every tick, a sub class implements this to define what operation the strategy needs
         to operate on a regular tick basis.
