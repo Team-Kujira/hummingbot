@@ -41,9 +41,9 @@ cdef class StrategyPyBase(StrategyBase):
 
     cdef c_tick(self, double timestamp):
         StrategyBase.c_tick(self, timestamp)
-        self.tick(timestamp)
+        return self.tick(timestamp)
 
-    def tick(self, timestamp: float):
+    async def tick(self, timestamp: float):
         raise NotImplementedError
 
     cdef c_did_create_buy_order(self, object order_created_event):
