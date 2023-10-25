@@ -780,7 +780,8 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
     async def _update_markets(self):
         self.logger().debug("_update_markets: start")
 
-        self._markets_info.clear()
+        if self._markets_info:
+            self._markets_info.clear()
 
         all_markets_map = DotMap()
 
@@ -928,6 +929,9 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
             orders = copy.copy(self._all_active_orders).values()
 
             for order in orders:
+                if order.exchange_order_id is None:
+                    continue
+
                 request = {
                     "trading_pair": self._trading_pair,
                     "chain": self._chain,
