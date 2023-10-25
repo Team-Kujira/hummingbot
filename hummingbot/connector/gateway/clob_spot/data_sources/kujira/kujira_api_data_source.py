@@ -63,12 +63,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         self._owner_address = connector_spec["wallet_address"]
         self._payer_address = self._owner_address
 
-        self._trading_pair = None
-        if self._trading_pairs:
-            self._trading_pair = self._trading_pairs[0]
-
         self._markets = None
-        self._market = None
 
         self._user_balances = None
 
@@ -158,7 +153,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                     "connector": self._connector,
                     "chain": self._chain,
                     "network": self._network,
-                    "trading_pair": self._trading_pair,
+                    "trading_pair": order.trading_pair,
                     "address": self._owner_address,
                     "trade_type": order.trade_type,
                     "order_type": order.order_type,
@@ -222,7 +217,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                 creation_timestamp=0,
                 order_type=order_to_create.order_type,
                 trade_type=order_to_create.trade_type,
-                trading_pair=self._trading_pair,
+                trading_pair=order_to_create.trading_pair,
             )
             candidate_orders.append(candidate_order)
 
@@ -451,7 +446,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
             "connector": self._connector,
             "chain": self._chain,
             "network": self._network,
-            "trading_pair": self._trading_pair,
+            "trading_pair": trading_pair,
         }
 
         self.logger().debug(f"""get_clob_ticker request:\n "{self._dump(request)}".""")
@@ -460,7 +455,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         self.logger().debug(f"""get_clob_ticker response:\n "{self._dump(response)}".""")
 
-        ticker = DotMap(response, _dynamic=False).markets[self._trading_pair]
+        ticker = DotMap(response, _dynamic=False).markets[trading_pair]
 
         ticker_price = Decimal(ticker.price)
 
@@ -472,7 +467,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
         self.logger().debug("get_order_book_snapshot: start")
 
         request = {
-            "trading_pair": self._trading_pair,
+            "trading_pair": trading_pair,
             "connector": self._connector,
             "chain": self._chain,
             "network": self._network,
@@ -516,9 +511,6 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
     async def get_account_balances(self) -> Dict[str, Dict[str, Decimal]]:
         self.logger().debug("get_account_balances: start")
-
-        if not self._trading_pairs and self._trading_pair:
-            self._trading_pairs = self._trading_pair
 
         if self._trading_pairs:
             token_symbols = []
@@ -575,7 +567,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                 await in_flight_order.get_exchange_order_id()
 
                 request = {
-                    "trading_pair": self._trading_pair,
+                    "trading_pair": in_flight_order.trading_pair,
                     "chain": self._chain,
                     "network": self._network,
                     "connector": self._connector,
@@ -654,7 +646,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                     trade_update = None
 
                     request = {
-                        "trading_pair": self._trading_pair,
+                        "trading_pair": in_flight_order.trading_pair,
                         "chain": self._chain,
                         "network": self._network,
                         "connector": self._connector,
@@ -683,6 +675,8 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                         timestamp = time()
                         trade_id = str(timestamp)
 
+                        market = self._markets_info[in_flight_order.trading_pair]
+
                         trade_update = TradeUpdate(
                             trade_id=trade_id,
                             client_order_id=in_flight_order.client_order_id,
@@ -696,8 +690,8 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                                 fee_schema=TradeFeeSchema(),
                                 trade_type=in_flight_order.trade_type,
                                 flat_fees=[TokenAmount(
-                                    amount=Decimal(self._market.fees.taker),
-                                    token=self._market.quoteToken.symbol
+                                    amount=Decimal(market.fees.taker),
+                                    token=market.quoteToken.symbol
                                 )]
                             ),
                         )
@@ -785,20 +779,14 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
         all_markets_map = DotMap()
 
-        if not self._trading_pairs and self._trading_pair:
-            self._trading_pairs = self._trading_pair
-
         if self._trading_pairs:
             for trading_pair in self._trading_pairs:
-
                 request = {
                     "connector": self._connector,
                     "chain": self._chain,
                     "network": self._network,
+                    "trading_pair": trading_pair
                 }
-
-                if trading_pair:
-                    request["trading_pair"] = trading_pair
 
                 self.logger().debug(f"""get_clob_markets request:\n "{self._dump(request)}".""")
 
@@ -806,12 +794,10 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
                 self.logger().debug(f"""get_clob_markets response:\n "{self._dump(response)}".""")
 
-                if 'trading_pair' in request or trading_pair:
-                    market = DotMap(response, _dynamic=False).markets
-                    self._market = market[request['trading_pair']]
-                    all_markets_map[request['trading_pair'] or trading_pair] = self._market
-                    self._market["hb_trading_pair"] = convert_market_name_to_hb_trading_pair(self._market.name)
-                    self._markets_info[self._market["hb_trading_pair"]] = self._market
+                market = DotMap(response, _dynamic=False).markets[trading_pair]
+                market["hb_trading_pair"] = convert_market_name_to_hb_trading_pair(market.name)
+                all_markets_map[trading_pair] = market
+                self._markets_info[market["hb_trading_pair"]] = market
         else:
             request = {
                 "connector": self._connector,
@@ -829,6 +815,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
 
             for market in self._markets.values():
                 market["hb_trading_pair"] = convert_market_name_to_hb_trading_pair(market.name)
+                all_markets_map[market.name] = market
                 self._markets_info[market["hb_trading_pair"]] = market
 
         self._markets = all_markets_map
@@ -933,7 +920,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                     continue
 
                 request = {
-                    "trading_pair": self._trading_pair,
+                    "trading_pair": order.trading_pair,
                     "chain": self._chain,
                     "network": self._network,
                     "connector": self._connector,
@@ -948,7 +935,7 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                         updated_order = response["orders"][0]
 
                         message = {
-                            "trading_pair": self._trading_pair,
+                            "trading_pair": order.trading_pair,
                             "update_timestamp":
                                 updated_order["updatedAt"] if len(updated_order["updatedAt"]) else time(),
                             "new_state": updated_order["state"],
@@ -964,12 +951,11 @@ class KujiraAPIDataSource(GatewayCLOBAPIDataSourceBase):
                             self._publisher.trigger_event(event_tag=MarketEvent.OrderUpdate, message=message)
 
                         elif updated_order["state"] == OrderState.FILLED.name:
-
                             message = {
                                 "timestamp":
                                     updated_order["updatedAt"] if len(updated_order["updatedAt"]) else time(),
                                 "order_id": order.client_order_id,
-                                "trading_pair": self._trading_pair,
+                                "trading_pair": order.trading_pair,
                                 "trade_type": order.trade_type,
                                 "order_type": order.order_type,
                                 "price": order.price,
