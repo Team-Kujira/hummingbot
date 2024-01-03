@@ -183,7 +183,7 @@ class OrderCandidate:
     def _adjust_for_order_collateral(self, available_balances: Dict[str, Decimal]):
         if self.order_collateral is not None:
             token, amount = self.order_collateral
-            if available_balances[token] < amount:
+            if not amount.is_nan() and available_balances[token] < amount:
                 scaler = available_balances[token] / amount
                 self._scale_order(scaler)
 

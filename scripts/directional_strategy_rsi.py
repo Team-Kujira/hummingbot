@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from hummingbot.data_feed.candles_feed.candles_factory import CandlesFactory
+from hummingbot.data_feed.candles_feed.candles_factory import CandlesConfig, CandlesFactory
 from hummingbot.strategy.directional_strategy_base import DirectionalStrategyBase
 
 
@@ -43,7 +43,7 @@ class RSI(DirectionalStrategyBase):
     # Define the trading pair and exchange that we want to use and the csv where we are going to store the entries
     trading_pair: str = "ETH-USDT"
     exchange: str = "binance_perpetual"
-    order_amount_usd = Decimal("15")
+    order_amount_usd = Decimal("40")
     leverage = 10
 
     # Configure the parameters for the position
@@ -54,9 +54,7 @@ class RSI(DirectionalStrategyBase):
     trailing_stop_trailing_delta = 0.001
     cooldown_after_execution = 10
 
-    candles = [CandlesFactory.get_candle(connector=exchange,
-                                         trading_pair=trading_pair,
-                                         interval="1m", max_records=150)]
+    candles = [CandlesFactory.get_candle(CandlesConfig(connector=exchange, trading_pair=trading_pair, interval="3m", max_records=1000))]
     markets = {exchange: {trading_pair}}
 
     def get_signal(self):

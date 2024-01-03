@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 import pandas as pd
 from prompt_toolkit.utils import is_windows
 
+from hummingbot.client.command.gateway_command import GatewayCommand
 from hummingbot.client.config.config_helpers import (
     ClientConfigAdapter,
     missing_required_configs_legacy,
@@ -41,6 +42,9 @@ no_restart_pmm_keys = ["order_amount",
                        "price_ceiling_pct",
                        "price_floor_pct",
                        "price_band_refresh_time"
+                       "order_optimization_enabled",
+                       "bid_order_optimization_depth",
+                       "ask_order_optimization_depth"
                        ]
 client_configs_to_display = ["autofill_import",
                              "kill_switch_mode",
@@ -71,6 +75,7 @@ client_configs_to_display = ["autofill_import",
                              "gateway_api_port",
                              "rate_oracle_source",
                              "extra_tokens",
+                             "fetch_pairs_from_all_exchanges",
                              "global_token",
                              "global_token_name",
                              "global_token_symbol",
@@ -346,7 +351,10 @@ class ConfigCommand:
             exchange = config_map.exchange
             market = config_map.market
             base, quote = split_hb_trading_pair(market)
-            balances = await UserBalances.instance().balances(exchange, config_map, base, quote)
+            if UserBalances.instance().is_gateway_market(exchange):
+                balances = await GatewayCommand.balance(self, exchange, config_map, base, quote)
+            else:
+                balances = await UserBalances.instance().balances(exchange, config_map, base, quote)
             if balances is None:
                 return
             base_ratio = await UserBalances.base_amount_ratio(exchange, market, balances)
@@ -383,7 +391,10 @@ class ConfigCommand:
             exchange = config_map['exchange'].value
             market = config_map["market"].value
             base, quote = market.split("-")
-            balances = await UserBalances.instance().balances(exchange, config_map, base, quote)
+            if UserBalances.instance().is_gateway_market(exchange):
+                balances = await GatewayCommand.balance(self, exchange, config_map, base, quote)
+            else:
+                balances = await UserBalances.instance().balances(exchange, config_map, base, quote)
             if balances is None:
                 return
             base_ratio = await UserBalances.base_amount_ratio(exchange, market, balances)
@@ -436,6 +447,8 @@ class ConfigCommand:
 
             if exchange.endswith("paper_trade"):
                 balances = self.client_config_map.paper_trade.paper_trade_account_balance
+            elif UserBalances.instance().is_gateway_market(exchange):
+                balances = await GatewayCommand.balance(self, exchange, config_map, base_asset, quote_asset)
             else:
                 balances = await UserBalances.instance().balances(
                     exchange, base_asset, quote_asset

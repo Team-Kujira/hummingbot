@@ -70,6 +70,8 @@ class GatewayCLOBSPOT(ExchangePyBase):
 
         self._add_forwarders()
 
+        self.has_started = False
+
         super().__init__(client_config_map)
 
     @property
@@ -155,9 +157,20 @@ class GatewayCLOBSPOT(ExchangePyBase):
         sd["api_data_source_initialized"] = self._api_data_source.ready
         return sd
 
+    def start(self, *args, **kwargs):
+        super().start(**kwargs)
+        safe_ensure_future(self.start_network())
+        safe_ensure_future(self._api_data_source.start())
+
+    def stop(self, *args, **kwargs):
+        super().stop(**kwargs)
+        safe_ensure_future(self._api_data_source.stop())
+
     async def start_network(self):
-        await self._api_data_source.start()
-        await super().start_network()
+        if not self.has_started:
+            await self._api_data_source.start()
+            await super().start_network()
+            self.has_started = True
 
     async def stop_network(self):
         await super().stop_network()
@@ -719,7 +732,8 @@ class GatewayCLOBSPOT(ExchangePyBase):
         return poll_interval
 
     async def cancel_all(self, timeout_seconds: float) -> List[CancellationResult]:
-        if hasattr(self._api_data_source, 'cancel_all'):
-            return await self._api_data_source.cancel_all(timeout_seconds)
-        else:
-            await super().cancel_all(timeout_seconds)
+        timeout = self._api_data_source.cancel_all_orders_timeout \
+            if self._api_data_source.cancel_all_orders_timeout is not None \
+            else timeout_seconds
+
+        return await super().cancel_all(timeout)
