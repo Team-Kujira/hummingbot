@@ -1013,7 +1013,7 @@ class GatewayHttpClient:
     ):
         return await self.api_request(
             route.value[0][0],
-            f"""chain/kujira/{route.value[0][1]}""",
+            f"""kujira/{route.value[0][1]}""",
             payload,
             use_body=True
         )
